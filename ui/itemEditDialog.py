@@ -54,7 +54,7 @@ class ItemEditDialog(QDialog):
         self.completer.setCompletionMode(QCompleter.PopupCompletion)
         self.completer.activated[str].connect(self._completion_selected)
         self.prefab_input.setCompleter(self.completer)
-        self.prefab_input.editingFinished.connect(lambda: self._apply_catalog_constraints(preserve_existing=True))
+        self.prefab_input.editingFinished.connect(self._reapply_constraints)
         self.catalog_status = QLabel()
         self.catalog_status.setWordWrap(True)
         self.glyph_preview = QLabel()
@@ -105,6 +105,9 @@ class ItemEditDialog(QDialog):
         layout.addRow(buttons)
 
     # ------------------------------------------------------------ durability
+    def _reapply_constraints(self):
+        self._apply_catalog_constraints(preserve_existing=True)
+
     def _refresh_durability_mode(self, *_args):
         """Percent of the real maximum when it is known for this prefab and quality, else the raw value."""
         prefab = self.prefab_input.text().strip()

@@ -49,7 +49,7 @@ class ItemPickerDialog(QDialog):
 
         self.categories.currentItemChanged.connect(self._node_changed)
         self.search.textChanged.connect(self._apply_search)
-        self.grid.itemDoubleClicked.connect(lambda _item: self.accept())
+        self.grid.itemDoubleClicked.connect(self._tile_double_clicked)
         self.categories.setCurrentItem(self.categories.topLevelItem(0))
 
     def _build_right_pane(self) -> QVBoxLayout:
@@ -151,6 +151,9 @@ class ItemPickerDialog(QDialog):
             row.setToolTip(_describe(item))
             row.setSizeHint(QSize(140, 146))
             self.grid.addItem(row)
+
+    def _tile_double_clicked(self, _item):
+        self.accept()
 
     def accept(self) -> None:
         if self.pages.currentIndex() == 1:

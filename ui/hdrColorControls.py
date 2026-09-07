@@ -103,11 +103,15 @@ class HdrColorControls(QGroupBox):
         buttons = {}
         for label, factor in PRESETS:
             button = QPushButton(label)
-            button.clicked.connect(lambda _checked=False, value=factor: self.preset_requested.emit(value))
+            button.setProperty("factor", factor)
+            button.clicked.connect(self._preset_clicked)
             row.addWidget(button)
             buttons[factor] = button
         parent_layout.addLayout(row)
         return buttons
+
+    def _preset_clicked(self, _checked=False):
+        self.preset_requested.emit(float(self.sender().property("factor")))
 
     def _spin_changed(self, _value):
         if not self.syncing:

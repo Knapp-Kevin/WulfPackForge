@@ -7,6 +7,7 @@ The project is currently evolving toward its first branded Wulfpack Forge releas
 ## Unreleased
 
 ### Fixed
+- An intermittent crash while opening dialogs: widget signals were connected through lambdas that captured the widget, so Python freed the widget at an arbitrary garbage-collection point instead of deterministically. Every connection now targets a bound method, and the structural test refuses the old pattern.
 - With no character loaded, the editor tabs are disabled and the status line says to open or create a character. Previously the Inventory tab showed an empty grid whose picker and editor opened but could not add anything, and the failure was silent. Inventory actions now refuse cleanly without a character, and any error that escapes the interface is written to the log file.
 - Overbright colours now keep their hue in the head preview and the colour swatches instead of washing to white: the display colour is the stored colour scaled to its peak, and the multiplier shows as a glow (faint at 2×, strong at 8×). Stored values are unchanged.
 - HDR intensity presets now scale the colour you picked (Normal 1× restores it exactly, Bright 2× doubles it) instead of re-anchoring to a peak of 1.0, so clicking presets in any order never drifts.

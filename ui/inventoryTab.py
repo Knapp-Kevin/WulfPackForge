@@ -61,8 +61,8 @@ class InventoryTab(QWidget):
             for x in range(self.GRID_WIDTH):
                 slot = InventorySlot(x, y, self)
                 slot.setContextMenuPolicy(Qt.CustomContextMenu)
-                slot.customContextMenuRequested.connect(lambda pos, s=slot: self.show_slot_menu(pos, s))
-                slot.clicked.connect(lambda checked=False, s=slot: self.on_slot_clicked(s))
+                slot.customContextMenuRequested.connect(self._slot_menu_requested)
+                slot.clicked.connect(self._slot_clicked)
                 
                 self.grid_layout.addWidget(slot, y, x)
                 self.slots[(x, y)] = slot
@@ -79,6 +79,12 @@ class InventoryTab(QWidget):
             if (x, y) in self.slots:
                 self.slots[(x, y)].set_item(item)
         self.equipment_panel.refresh(inventory_list)
+
+    def _slot_clicked(self, _checked=False):
+        self.on_slot_clicked(self.sender())
+
+    def _slot_menu_requested(self, position):
+        self.show_slot_menu(position, self.sender())
 
     def on_slot_clicked(self, slot: InventorySlot):
         """Standard left-click action on a slot."""

@@ -89,8 +89,8 @@ class NewCharacterDialog(QDialog):
     def _connect(self):
         self.name_input.textChanged.connect(self._validate)
         self.btn_browse.clicked.connect(self._browse)
-        self.btn_skin.clicked.connect(lambda: self._pick(self.skin_color, self.skin_preview, "Select Skin Color"))
-        self.btn_hair.clicked.connect(lambda: self._pick(self.hair_color, self.hair_preview, "Select Hair Color"))
+        self.btn_skin.clicked.connect(self._pick_skin)
+        self.btn_hair.clicked.connect(self._pick_hair)
         self.model_combo.currentIndexChanged.connect(self._model_changed)
         self.hair_combo.currentIndexChanged.connect(self.refresh_preview)
         self.beard_combo.currentIndexChanged.connect(self.refresh_preview)
@@ -117,6 +117,12 @@ class NewCharacterDialog(QDialog):
         palette = widget.palette()
         palette.setColor(QPalette.Window, _to_qcolor(rgb))
         widget.setPalette(palette)
+
+    def _pick_skin(self, _checked=False):
+        self._pick(self.skin_color, self.skin_preview, "Select Skin Color")
+
+    def _pick_hair(self, _checked=False):
+        self._pick(self.hair_color, self.hair_preview, "Select Hair Color")
 
     def _pick(self, target, preview, title):
         color = QColorDialog.getColor(_to_qcolor(target), self, title)
