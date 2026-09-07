@@ -1,5 +1,6 @@
 import os
 import unittest
+from tests.qt_support import QtTestCase
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -22,7 +23,7 @@ def item_data(prefab, stack=1, quality=1, variant=0):
     }
 
 
-class ItemEditDialogTests(unittest.TestCase):
+class ItemEditDialogTests(QtTestCase):
     def test_known_item_uses_catalog_constraints(self):
         dialog = ItemEditDialog(item_data("ArrowWood", stack=20))
         self.assertIn("Valheim 0.221.12 catalog", dialog.catalog_status.text())

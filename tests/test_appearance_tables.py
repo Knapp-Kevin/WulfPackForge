@@ -1,6 +1,7 @@
 import os
 import tempfile
 import unittest
+from tests.qt_support import QtTestCase
 from pathlib import Path
 from unittest.mock import patch
 
@@ -17,7 +18,7 @@ from ui import glyphs as ui_glyphs
 APP = QApplication.instance() or QApplication([])
 
 
-class AppearanceTableTests(unittest.TestCase):
+class AppearanceTableTests(QtTestCase):
     def test_beard_table_from_catalog(self):
         self.assertEqual(VALHEIM_BEARDS["Beard20"], "Spiky")
         self.assertEqual(VALHEIM_BEARDS["Beard17"], "Neat")
@@ -39,7 +40,7 @@ class AppearanceTableTests(unittest.TestCase):
         self.assertTrue(VALHEIM_HAIRS and VALHEIM_BEARDS)  # the catalog tables are the only source now
 
 
-class AppearanceThumbnailTests(unittest.TestCase):
+class AppearanceThumbnailTests(QtTestCase):
     def setUp(self):
         ui_glyphs.clear_cache()
 

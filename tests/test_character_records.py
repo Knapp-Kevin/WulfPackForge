@@ -1,6 +1,7 @@
 import os
 import tempfile
 import unittest
+from tests.qt_support import QtTestCase
 from pathlib import Path
 from unittest.mock import patch
 
@@ -37,7 +38,7 @@ def lineage(directory: Path):
     return files
 
 
-class CharacterRecordTests(unittest.TestCase):
+class CharacterRecordTests(QtTestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.home = Path(self.temp.name)
@@ -46,6 +47,7 @@ class CharacterRecordTests(unittest.TestCase):
         self.workspace = self.home / "workspace"
 
     def tearDown(self):
+        super().tearDown()  # dispose widgets before the temp directory they scanned goes away
         self.temp.cleanup()
 
     def test_states_of_one_identity_form_one_record_with_the_active_head(self):

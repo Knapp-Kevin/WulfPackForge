@@ -1,5 +1,6 @@
 import os
 import unittest
+from tests.qt_support import QtTestCase
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -18,7 +19,7 @@ def _grid_prefabs(dialog):
     return [dialog.grid.item(i).data(Qt.UserRole) for i in range(dialog.grid.count())]
 
 
-class ItemPickerDialogTests(unittest.TestCase):
+class ItemPickerDialogTests(QtTestCase):
     def test_categories_are_listed_in_order_with_advanced_last(self):
         dialog = ItemPickerDialog()
         labels = [dialog.categories.topLevelItem(i).data(0, Qt.UserRole)[0] for i in range(dialog.categories.topLevelItemCount())]
@@ -113,7 +114,7 @@ class ItemPickerDialogTests(unittest.TestCase):
         dialog.close()
 
 
-class InventorySlotIconTests(unittest.TestCase):
+class InventorySlotIconTests(QtTestCase):
     def test_slot_shows_icon_for_item_and_none_when_empty(self):
         slot = InventorySlot(0, 0)
         self.assertTrue(slot.icon().isNull())

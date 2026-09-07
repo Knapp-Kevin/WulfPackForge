@@ -1,5 +1,6 @@
 import os
 import unittest
+from tests.qt_support import QtTestCase
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -112,7 +113,7 @@ def item_data(prefab, durability=100.0, quality=1):
     return {"prefab": prefab, "stack": 1, "durability": durability, "quality": quality, "variant": 0, "equipped": False}
 
 
-class ParserTests(unittest.TestCase):
+class ParserTests(QtTestCase):
     def test_upgrade_table_gives_levels_base_and_per_level(self):
         table = parse_page(SPLITNIR_PAGE)
         entry = table["SpearSplitner"]
@@ -134,7 +135,7 @@ class ParserTests(unittest.TestCase):
         self.assertEqual(parse_page(CROWN_PAGE)["HelmetMidsummerCrown"]["base"], 0.0)
 
 
-class MaxDurabilityTests(unittest.TestCase):
+class MaxDurabilityTests(QtTestCase):
     def test_shipped_table_arithmetic(self):
         self.assertEqual(max_durability("SpearSplitner", 1), 100.0)
         self.assertEqual(max_durability("SpearSplitner", 3), 200.0)
@@ -153,7 +154,7 @@ class MaxDurabilityTests(unittest.TestCase):
         self.assertEqual(default_durability("NotARealPrefab"), 100.0)
 
 
-class DialogPercentTests(unittest.TestCase):
+class DialogPercentTests(QtTestCase):
     def test_known_item_shows_percent_of_real_max(self):
         dialog = ItemEditDialog(item_data("SpearSplitner", durability=50.0))
         self.assertTrue(dialog.durability_percent.isVisibleTo(dialog))

@@ -2,6 +2,7 @@ import os
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import unittest
+from tests.qt_support import QtTestCase
 
 from PySide6.QtWidgets import QApplication
 
@@ -12,7 +13,7 @@ from ui.saveStatusWidget import SaveStatusWidget
 _app = QApplication.instance() or QApplication([])
 
 
-class SaveStatusWidgetTests(unittest.TestCase):
+class SaveStatusWidgetTests(QtTestCase):
     def test_verified_report_renders_compact_metadata(self):
         widget = SaveStatusWidget()
         report = build_save_health_report(

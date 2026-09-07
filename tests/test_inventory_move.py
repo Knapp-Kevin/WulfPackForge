@@ -1,6 +1,7 @@
 import copy
 import os
 import unittest
+from tests.qt_support import QtTestCase
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -25,7 +26,7 @@ def fixture():
     return unpack_player_data_hex(realistic_player_hex())
 
 
-class MoveItemTests(unittest.TestCase):
+class MoveItemTests(QtTestCase):
     def test_move_to_empty_slot_changes_only_coordinates(self):
         data = fixture()
         before = copy.deepcopy(data)
@@ -64,7 +65,7 @@ class MoveItemTests(unittest.TestCase):
         self.assertEqual(data["inventory"][2], before["inventory"][2])  # off-grid backpack item
 
 
-class EquipmentPanelTests(unittest.TestCase):
+class EquipmentPanelTests(QtTestCase):
     def test_occupants_by_slot_and_hands(self):
         inventory = [
             base_item("ArmorFenringChest", 0, 0, True), base_item("Bow", 1, 0, True),

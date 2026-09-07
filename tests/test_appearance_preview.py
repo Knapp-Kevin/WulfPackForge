@@ -1,6 +1,7 @@
 import copy
 import os
 import unittest
+from tests.qt_support import QtTestCase
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -32,7 +33,7 @@ def _first_pixel(image, predicate):
     return None
 
 
-class AppearancePreviewTests(unittest.TestCase):
+class AppearancePreviewTests(QtTestCase):
     def test_colours_land_on_the_right_regions(self):
         pixmap = compose_preview("Hair7", "Beard3", SKIN, HAIR, 0, 256)
         self.assertFalse(pixmap.isNull())
