@@ -4,6 +4,7 @@ from ui.branding import APP_NAME
 STARTUP_RUNNING_INFO = (
     "You can inspect a character while Valheim is open, but saving is blocked until the game is closed."
 )
+NO_CHARACTER_LOADED = "No character loaded. Choose a character above and click Open Character, or create a new one."
 NO_PLAYER_DATA_TITLE = "Character Has No Player Data"
 NO_PLAYER_DATA_BODY = "The save container is valid, but it contains no editable player data."
 NO_PLAYER_DATA_HEALTH = "The save container contains no editable player data."
