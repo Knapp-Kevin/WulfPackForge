@@ -80,9 +80,9 @@ class MainWindowSaveFlowTests(unittest.TestCase):
     def _backups(self):
         return sorted(self.workspace_root.rglob("*.bak*"))
 
-    def test_editor_offers_four_tabs_and_never_writes_vitals(self):
+    def test_editor_offers_five_tabs_and_never_writes_vitals(self):
         titles = [self.window.tabs.tabText(i) for i in range(self.window.tabs.count())]
-        self.assertEqual(titles, ["Appearance", "Inventory", "Skills", "Misc"])
+        self.assertEqual(titles, ["Appearance", "Inventory", "Skills", "Misc", "Record"])
         opened = unpack_player_data_hex(self.window.root_save["player_data_hex"])
         opened_cheats = self.window.root_save.get("used_cheats")
         self.window.misc_tab.name_input.setText("Renamed")

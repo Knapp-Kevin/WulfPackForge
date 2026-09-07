@@ -6,6 +6,9 @@ The project is currently evolving toward its first branded Wulfpack Forge releas
 
 ## Unreleased
 
+### Added
+- A read-only Record tab showing what the character file records beyond the editable fields: creation date, player ID, forsaken power, worlds visited and known world names, known biomes, trophies, known recipes, crafting stations and their levels, known materials, unique items, and active food. Names come from the item catalog; anything unrecognised is shown by its stored name rather than hidden. Nothing on the tab can be edited or written back.
+
 ### Fixed
 - Three defensive lifetime fixes found while chasing an intermittent test-suite crash: the banner's settle timer is owned by the banner, the character list stops its background scan when the window closes, and the appearance preview builds its images as Qt-owned copies rather than views over Python buffers. The crash itself was the test harness freeing windows at arbitrary times; test windows are now torn down deterministically.
 - An intermittent crash while opening dialogs: widget signals were connected through lambdas that captured the widget, so Python freed the widget at an arbitrary garbage-collection point instead of deterministically. Every connection now targets a bound method, and the structural test refuses the old pattern.
