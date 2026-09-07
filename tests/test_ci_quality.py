@@ -1,3 +1,4 @@
+import importlib.util
 import io
 import pathlib
 import subprocess
@@ -11,6 +12,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
 class CiQualityTests(unittest.TestCase):
+    @unittest.skipUnless(importlib.util.find_spec("pyflakes"), "pyflakes is a development dependency (requirements-dev.txt)")
     def test_pyflakes_is_clean(self):
         result = subprocess.run([sys.executable, "-m", "pyflakes", "main.py", "data", "subscripts", "ui", "tools", "tests"],
                                 capture_output=True, text=True, cwd=ROOT, timeout=300)
