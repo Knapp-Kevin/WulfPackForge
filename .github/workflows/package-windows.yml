@@ -77,10 +77,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # A tag with a pre-release suffix (v0.9.0-rc.1) becomes a DRAFT pre-release for maintainer
+          # validation; only a plain tag (v1.0.0) publishes a release. The first public release stays
+          # gated on Valheim 1.0 validation (GOVERNANCE.md, issue #2).
+          $flags = @()
+          if ($env:GITHUB_REF_NAME -like "*-*") { $flags = @("--prerelease", "--draft") }
           gh release create "$env:GITHUB_REF_NAME" `
             .\dist\WulfpackForge.exe `
             .\dist\WulfpackForge-windows-x64.zip `
             .\dist\SHA256SUMS.txt `
             --repo "$env:GITHUB_REPOSITORY" `
             --title "Wulfpack Forge $env:GITHUB_REF_NAME" `
-            --generate-notes
+            --generate-notes @flags

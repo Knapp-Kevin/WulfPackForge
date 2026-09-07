@@ -5,7 +5,7 @@ from PySide6.QtWidgets import QApplication
 
 from subscripts.logSetup import configure_logging, install_excepthook
 
-from ui.branding import app_icon
+from ui.branding import APP_VERSION, app_icon
 from ui.mainWindow import MainWindow
 
 
@@ -28,9 +28,12 @@ def _verify_glyph_bundle() -> bool:
 
 
 def main():
+    if "--version" in sys.argv:
+        print(APP_VERSION)
+        return 0
     log_file = configure_logging()
     install_excepthook()
-    logging.getLogger(__name__).info("Wulfpack Forge starting; log file: %s", log_file)
+    logging.getLogger(__name__).info("Wulfpack Forge %s starting; log file: %s", APP_VERSION, log_file)
     app = QApplication(sys.argv)
     app.setWindowIcon(app_icon())
     window = MainWindow(startup_warning="--smoke-test" not in sys.argv)
