@@ -42,11 +42,13 @@ Wulfpack Forge does not use a server or remote database for normal operation. Ch
 
 Owns the player-facing desktop experience.
 
-- `mainWindow.py` coordinates loading, workspace creation, editing, health state, and saving; `characterPicker.py` owns discovery and the character row, `brandBanner.py` the banner, `messages.py` the dialog texts.
+- `mainWindow.py` coordinates loading, workspace creation, editing, health state, and saving; `characterPicker.py` owns discovery and the character row, `brandBanner.py` the banner, and `messages.py` the dialog texts.
 - `saveStatusWidget.py` renders compact verification and compatibility state.
 - `branding.py` resolves Wulfpack Forge product metadata and bundled assets.
-- `itemPickerDialog.py` presents the catalog as curated categories (`data/item_groups.py`) with an icon grid and search; `glyphs.py` renders, tints, caches, and validates original inventory glyph masters under `assets/glyphs/items/`, with safe fallback behavior resolved by `data/glyphs.py`.
-- editor tabs own their respective user controls and data mapping.
+- `appearanceTab.py`, `appearancePreview.py`, and `hdrColorControls.py` own appearance selection, the composed live preview, and guarded HDR colour editing; `newCharacterDialog.py` reuses that appearance surface for creation.
+- `inventoryTab.py`, `inventorySlot.py`, and `equipmentPanel.py` own the grid, drag-and-drop interactions, and derived equipped-slot summary; `itemPickerDialog.py` provides the category tree and search, while `itemEditDialog.py` handles constraints and durability-percent editing.
+- `glyphs.py` renders, tints, caches, and validates original inventory and appearance artwork, with item fallback behavior resolved by `data/glyphs.py`.
+- `skillsTab.py`, `statsTab.py`, and `miscTab.py` own their respective controls and data mapping; `fieldTracker.py` supports preserve-by-default write-back.
 
 The UI should not bypass the workspace or save-safety layer.
 
@@ -66,7 +68,7 @@ A Steam Cloud entry is discoverable only when a synchronized copy exists on disk
 
 ### `subscripts/fchUtil.py`
 
-Provides low-level Valheim `.fch` parsing and compilation behavior inherited and extended from the VikingEditor codebase.
+Provides Valheim `.fch` structure parsing and compilation behavior inherited and extended from the VikingEditor codebase. Primitive binary readers and writers live in `subscripts/binaryIO.py`.
 
 Normal product flows use the strict verification layer rather than relying on permissive parser behavior alone.
 
@@ -84,7 +86,11 @@ Current states:
 - `Compatibility unverified`
 - `Needs attention`
 
-A file that parses successfully is not automatically considered writable. The serializer currently has explicit write validation for character-save version 43.
+A file that parses successfully is not automatically considered writable. Write validation covers character-save versions 40 through 43; player-data version 29, inventory version 106, and skill version 2 are checked separately as the supported inner layout.
+
+### `subscripts/logSetup.py`
+
+Configures the rotating `logs/wulfpack-forge.log` file under the managed workspace root and fails safely when logging cannot be established.
 
 ### `subscripts/workspace.py`
 
@@ -127,15 +133,19 @@ If candidate verification or destination consistency fails, replacement must not
 
 Separates discoverability metadata from write policy.
 
-- `valheim_items.json` is generated, versioned item metadata.
-- `items.py` loads catalog data and owns curated safety constraints/resolution behavior.
-- `glyphs.py` maps prefab/category metadata to presentation-only silhouettes and material tints.
+- `items.py` and `valheim_items.json` provide generated item metadata plus curated write constraints and resolution behavior.
+- `item_groups.py` and `equipment.py` provide player-facing catalog navigation and equipment-role/slot rules.
+- `glyphs.py` and `appearance.py` map catalog data to presentation-only item glyphs and appearance choices.
+- `durability.py` and `valheim_durability.json` provide wiki-derived numeric maximum-durability facts and guarded calculations.
+- `skills.py` and `powers.py` provide the supported player-facing names for those save fields.
 
 A catalog refresh must not silently alter write constraints.
 
-### `tools/update_item_catalog.py`
+### `tools/`
 
-Generates the versioned vanilla item snapshot and guards against unexpected source-version drift or suspiciously incomplete output.
+- `update_item_catalog.py` generates the versioned vanilla item snapshot and guards against unexpected source-version drift or suspiciously incomplete output.
+- `update_item_durability.py` regenerates numeric durability facts from attributed Valheim community wiki item pages.
+- `make_app_icon.py` builds the Windows ICO from the approved Frostwulf source mark.
 
 ### `tests/`
 
@@ -203,8 +213,11 @@ The bundle includes:
 
 - Python application/runtime code;
 - `data/valheim_items.json`;
-- `assets/wulfpack-forge-banner.jpg`.
-- `assets/glyphs/items/` with 23 original inventory masters.
+- `data/valheim_durability.json`;
+- `assets/wulfpack-forge-banner.jpg` and `assets/FrostWulf-favicon.png`;
+- the embedded `assets/wulfpack-forge.ico` Windows icon;
+- `assets/glyphs/items/` with 34 original inventory masters;
+- all hairstyle and beard thumbnails under `assets/glyphs/hair/` and `assets/glyphs/beard/`.
 
 The packaged smoke test verifies that critical generated, branding, and glyph assets can be resolved and decoded from the PyInstaller runtime environment. It checks objective runtime properties, not subjective art quality.
 
