@@ -5,11 +5,12 @@ Every thumbnail is split once into a head layer (dark pixels) and a hair layer
 is a multiply composite over those cached layers, so colour changes are instant
 and no save field is ever touched.
 """
+import math
 from typing import Dict, Sequence, Tuple
 
 from PySide6.QtCore import QRectF, Qt
-from PySide6.QtGui import QColor, QImage, QPainter, QPixmap
-from PySide6.QtWidgets import QLabel
+from PySide6.QtGui import QColor, QImage, QPainter, QPen, QPixmap
+from PySide6.QtWidgets import QLabel, QWidget
 
 from data.appearance import BEARD_NONE, HAIR_NONE, VALHEIM_BEARDS, VALHEIM_HAIRS
 from ui.glyphs import glyph_root, placeholder_pixmap, tint_pixmap
@@ -25,6 +26,38 @@ _ANCHOR_ALPHA = 128
 
 def _to_qcolor(rgb: Sequence[float]) -> QColor:
     return QColor(*(int(max(0.0, min(1.0, c)) * 255) for c in rgb[:3]))
+
+
+def display_color(rgb: Sequence[float]) -> Tuple[QColor, float]:
+    """Hue-preserving SDR colour plus the overbright multiplier (1.0 when nothing exceeds 1.0)."""
+    safe = [max(0.0, float(c)) for c in rgb[:3]] or [0.0, 0.0, 0.0]
+    peak = max(max(safe), 1.0)
+    return _to_qcolor([c / peak for c in safe]), peak
+
+
+def bloom_strength(peak: float) -> float:
+    """0 at 1x, about a third at 2x, full at 8x and beyond."""
+    return 0.0 if peak <= 1.0 else min(1.0, math.log2(peak) / 3.0)
+
+
+def _blurred(pixmap: QPixmap, factor: int) -> QPixmap:
+    small = pixmap.scaled(max(1, pixmap.width() // factor), max(1, pixmap.height() // factor),
+                          Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
+    return small.scaled(pixmap.width(), pixmap.height(), Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
+
+
+def _bloom(painter: QPainter, tinted: QPixmap, peak: float, x: float = 0.0, y: float = 0.0) -> None:
+    """Additive halo around a tinted layer; the multiplier sets how far and how bright it spreads."""
+    strength = bloom_strength(peak)
+    if strength <= 0.0:
+        return
+    painter.setCompositionMode(QPainter.CompositionMode_Plus)
+    for factor, alpha in ((4, 0.55), (10, 0.45), (24, 0.35)):
+        painter.setOpacity(alpha * strength)
+        painter.drawPixmap(QRectF(x, y, tinted.width(), tinted.height()), _blurred(tinted, factor),
+                           QRectF(0, 0, tinted.width(), tinted.height()))
+    painter.setOpacity(1.0)
+    painter.setCompositionMode(QPainter.CompositionMode_SourceOver)
 
 
 def _source(kind: str, key: str, size: int) -> QImage:
@@ -95,11 +128,13 @@ def beard_transform(hair: str, beard: str, size: int = PREVIEW_SIZE) -> Tuple[fl
     return scale, head_anchor[0] - beard_anchor[0] * scale, head_anchor[2] - beard_anchor[2] * scale
 
 
-def _draw_centered(painter: QPainter, layer: QPixmap, color: QColor, size: int) -> None:
+def _draw_centered(painter: QPainter, layer: QPixmap, color: QColor, size: int, peak: float = 1.0) -> None:
     if layer.isNull():
         return
     tinted = tint_pixmap(layer, color)
-    painter.drawPixmap((size - tinted.width()) // 2, (size - tinted.height()) // 2, tinted)
+    x, y = (size - tinted.width()) // 2, (size - tinted.height()) // 2
+    painter.drawPixmap(x, y, tinted)
+    _bloom(painter, tinted, peak, x, y)
 
 
 def compose_preview(hair: str, beard: str, skin_rgb: Sequence[float], hair_rgb: Sequence[float],
@@ -113,17 +148,55 @@ def compose_preview(hair: str, beard: str, skin_rgb: Sequence[float], hair_rgb: 
     canvas = QPixmap(size, size)
     canvas.fill(Qt.transparent)
     painter = QPainter(canvas)
-    skin, hair_color = _to_qcolor(skin_rgb), _to_qcolor(hair_rgb)
-    _draw_centered(painter, head, skin, size)
-    _draw_centered(painter, hair_layer, hair_color, size)
+    (skin, skin_peak), (hair_color, hair_peak) = display_color(skin_rgb), display_color(hair_rgb)
+    _draw_centered(painter, head, skin, size, skin_peak)
+    _draw_centered(painter, hair_layer, hair_color, size, hair_peak)
     if beard_key != BEARD_NONE:
-        beard_layer = tint_pixmap(split_layers("beard", beard_key, size)[1], hair_color)
-        scale, dx, dy = beard_transform(hair_key, beard_key, size)
-        painter.setRenderHint(QPainter.SmoothPixmapTransform)
-        target = QRectF(dx, dy, beard_layer.width() * scale, beard_layer.height() * scale)
-        painter.drawPixmap(target, beard_layer, QRectF(0, 0, beard_layer.width(), beard_layer.height()))
+        _draw_beard(painter, hair_key, beard_key, hair_color, hair_peak, size)
     painter.end()
     return canvas
+
+
+def _draw_beard(painter, hair_key, beard_key, color, peak, size):
+    beard_layer = tint_pixmap(split_layers("beard", beard_key, size)[1], color)
+    scale, dx, dy = beard_transform(hair_key, beard_key, size)
+    painter.setRenderHint(QPainter.SmoothPixmapTransform)
+    source = QRectF(0, 0, beard_layer.width(), beard_layer.height())
+    fitted = beard_layer.scaled(int(beard_layer.width() * scale), int(beard_layer.height() * scale),
+                                Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
+    painter.drawPixmap(QRectF(dx, dy, fitted.width(), fitted.height()), fitted, QRectF(0, 0, fitted.width(), fitted.height()))
+    _bloom(painter, fitted, peak, dx, dy)
+
+
+class ColorSwatch(QWidget):
+    """Flat swatch that keeps the hue of an overbright colour and shows the multiplier as a lit rim."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setFixedSize(100, 30)
+        self._color, self._peak = QColor("white"), 1.0
+
+    def set_color(self, rgb) -> None:
+        self._color, self._peak = display_color(rgb)
+        self.update()
+
+    def paintEvent(self, _event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        rect = self.rect().adjusted(3, 3, -3, -3)
+        painter.fillRect(rect, self._color)
+        strength = bloom_strength(self._peak)
+        if strength > 0.0:
+            glow = QColor(self._color)
+            visible = 0.3 + 0.7 * strength  # even 2x must read as lit at swatch size
+            for width, alpha in ((6, 0.6), (3, 0.9)):
+                glow.setAlphaF(alpha * visible)
+                painter.setPen(QPen(glow, width))
+                painter.drawRect(rect)
+            painter.setCompositionMode(QPainter.CompositionMode_Plus)
+            painter.setOpacity(0.5 * strength)
+            painter.fillRect(self.rect(), self._color)
+        painter.end()
 
 
 class AppearancePreview(QLabel):

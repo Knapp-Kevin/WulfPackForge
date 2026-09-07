@@ -9,7 +9,7 @@ from PySide6.QtWidgets import QApplication
 
 from subscripts.playerDataUtil import unpack_player_data_hex
 from tests.fixture_saves import realistic_player_hex
-from ui.appearancePreview import beard_transform, compose_preview
+from ui.appearancePreview import ColorSwatch, beard_transform, compose_preview, display_color
 from ui.appearanceTab import AppearanceTab
 
 
@@ -52,6 +52,39 @@ class AppearancePreviewTests(unittest.TestCase):
         pixmap = compose_preview("Hair7", "Beard3", SKIN, HAIR, 0, 256)
         self.assertEqual((pixmap.width(), pixmap.height()), (256, 256))
         self.assertEqual(beard_transform("Hair7", "BeardNone", 256)[0], 1.0)
+
+    def test_overbright_skin_keeps_its_hue(self):
+        color, peak = display_color([2.0, 1.0, 0.5])
+        self.assertEqual(peak, 2.0)
+        self.assertEqual((color.red(), color.green(), color.blue()), (255, 127, 63))
+        image = compose_preview("Hair7", "BeardNone", [2.0, 1.0, 0.5], [0.2, 0.1, 0.05], 0, 256).toImage()
+        face = _first_pixel(image, lambda c: c.redF() > 0.8 and c.alpha() == 255)
+        self.assertIsNotNone(face)
+        pixel = image.pixelColor(*face)
+        self.assertGreater(pixel.redF() - pixel.blueF(), 0.3, "overbright skin washed to white")
+
+    def test_overbright_hair_blooms_outside_the_silhouette(self):
+        plain = compose_preview("Hair7", "BeardNone", SKIN, [0.1, 0.2, 0.8], 0, 256).toImage()
+        bright = compose_preview("Hair7", "BeardNone", SKIN, [0.4, 0.8, 3.2], 0, 256).toImage()
+        lit_outside = [
+            (x, y) for y in range(plain.height()) for x in range(plain.width())
+            if plain.pixelColor(x, y).alpha() == 0 and bright.pixelColor(x, y).alpha() > 0
+        ]
+        self.assertGreater(len(lit_outside), 100, "no bloom beyond the silhouette")
+
+    def test_swatch_shows_hue_and_rim(self):
+        swatch = ColorSwatch()
+        swatch.resize(100, 30)
+        swatch.set_color([2.0, 1.0, 0.5])
+        hot = swatch.grab().toImage()
+        centre = hot.pixelColor(50, 15)
+        self.assertGreater(centre.redF(), 0.9)
+        self.assertLess(centre.blueF(), 0.4)
+        swatch.set_color([1.0, 0.5, 0.25])
+        cool = swatch.grab().toImage()
+        hot_rim, cool_rim = hot.pixelColor(2, 2), cool.pixelColor(2, 2)
+        self.assertLess(abs(cool_rim.redF() - cool_rim.blueF()), 0.05, "1x rim should be the plain background")
+        self.assertGreater(hot_rim.redF() - hot_rim.blueF(), 0.15, "overbright rim should carry the colour")
 
     def test_female_model_has_no_beard_and_matches_beardnone(self):
         bearded = compose_preview("Hair7", "Beard3", SKIN, HAIR, 0, 256).toImage()
