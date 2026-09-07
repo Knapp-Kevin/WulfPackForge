@@ -7,6 +7,7 @@ a = Analysis(
     binaries=[],
     datas=[
         ("data/valheim_items.json", "data"),
+        ("data/valheim_durability.json", "data"),
         ("assets/wulfpack-forge-banner.jpg", "assets"),
         ("assets/FrostWulf-favicon.png", "assets"),
         ("assets/glyphs/items", "assets/glyphs/items"),

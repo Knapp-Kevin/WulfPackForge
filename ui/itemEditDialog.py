@@ -1,5 +1,6 @@
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
+    QHBoxLayout,
     QCheckBox,
     QCompleter,
     QDialog,
@@ -12,6 +13,7 @@ from PySide6.QtWidgets import (
     QSpinBox,
 )
 
+from data.durability import max_durability
 from data.items import CATALOG_GAME_VERSION, completion_labels, resolve_item
 from ui.glyphs import item_pixmap
 
@@ -59,10 +61,19 @@ class ItemEditDialog(QDialog):
         self.stack_input.setRange(min(0, stack_value), max(9999, stack_value))
         self.stack_input.setValue(stack_value)
 
+        self._original_durability = item_data.get("durability", 100.0)
         self.durability_input = QDoubleSpinBox()
         self.durability_input.setDecimals(2)
-        self.durability_input.setRange(0.0, max(99999.0, float(item_data.get("durability", 100.0))))
-        self.durability_input.setValue(item_data.get("durability", 100.0))
+        self.durability_input.setRange(0.0, max(99999.0, float(self._original_durability)))
+        self.durability_input.setValue(self._original_durability)
+        self.durability_percent = QDoubleSpinBox()
+        self.durability_percent.setDecimals(1)
+        self.durability_percent.setRange(0.0, 1000.0)  # saves can hold more than the maximum
+        self.durability_percent.setSuffix(" %")
+        self.durability_label = QLabel("Durability:")
+        self._durability_max = None
+        self._baseline_percent = None
+        self._baseline_quality = int(item_data.get("quality", 1))
 
         self.quality_input = QSpinBox()
         self.quality_input.setRange(min(0, quality_value), max(99, quality_value))
@@ -79,7 +90,10 @@ class ItemEditDialog(QDialog):
         layout.addRow("Preview:", self.glyph_preview)
         layout.addRow("Catalog:", self.catalog_status)
         layout.addRow("Stack Size:", self.stack_input)
-        layout.addRow("Durability:", self.durability_input)
+        durability_row = QHBoxLayout()
+        durability_row.addWidget(self.durability_percent)
+        durability_row.addWidget(self.durability_input)
+        layout.addRow(self.durability_label, durability_row)
         layout.addRow("Quality Level:", self.quality_input)
         self.variant_label = QLabel("Variant (Style):")
         layout.addRow(self.variant_label, self.variant_input)
@@ -93,6 +107,31 @@ class ItemEditDialog(QDialog):
         layout.addRow(buttons)
 
         self._apply_catalog_constraints(preserve_existing=True)
+        self.quality_input.valueChanged.connect(self._refresh_durability_mode)
+        self._refresh_durability_mode()
+
+    def _refresh_durability_mode(self, *_args):
+        """Percent of the real maximum when it is known for this prefab and quality, else the raw value."""
+        prefab = self.prefab_input.text().strip()
+        maximum = max_durability(prefab, self.quality_input.value())
+        self._durability_max = maximum
+        known = maximum is not None
+        self.durability_percent.setVisible(known)
+        self.durability_input.setVisible(not known)
+        if not known:
+            self.durability_label.setText("Durability:")
+            return
+        if self._baseline_percent is None:
+            self._baseline_percent = round(float(self._original_durability) / maximum * 100.0, 1)
+            self.durability_percent.setValue(self._baseline_percent)
+        self.durability_label.setText(f"Durability (max {maximum:g} at quality {self.quality_input.value()}):")
+
+    def _durability_value(self):
+        if self._durability_max is None:
+            return self.durability_input.value()
+        percent = self.durability_percent.value()
+        untouched = percent == self._baseline_percent and self.quality_input.value() == self._baseline_quality
+        return self._original_durability if untouched else round(percent / 100.0 * self._durability_max, 2)
 
     def _completion_selected(self, label):
         item = resolve_item(label)
@@ -100,6 +139,8 @@ class ItemEditDialog(QDialog):
             return
         self.prefab_input.setText(item.prefab)
         self._apply_catalog_constraints(preserve_existing=False)
+        self._baseline_percent = None
+        self._refresh_durability_mode()
 
     @staticmethod
     def _set_preserving_range(widget, minimum, maximum, preserve_existing):
@@ -210,7 +251,7 @@ class ItemEditDialog(QDialog):
         return {
             "prefab": prefab,
             "stack": self.stack_input.value(),
-            "durability": self.durability_input.value(),
+            "durability": self._durability_value(),
             "quality": self.quality_input.value(),
             "variant": self.variant_input.value(),
             "equipped": self.equipped_input.isChecked(),

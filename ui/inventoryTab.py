@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
 
 from PySide6.QtCore import Qt
 
+from data.durability import default_durability
 from data.equipment import resolve_equip
 from data.items import resolve_item
 from ui.equipmentPanel import EquipmentPanel
@@ -145,7 +146,7 @@ class InventoryTab(QWidget):
         new_item = {
             "prefab": picker.selected_prefab,
             "stack": 1,
-            "durability": 100.0,
+            "durability": default_durability(picker.selected_prefab),
             "grid_x": slot.grid_x,
             "grid_y": slot.grid_y,
             "equipped": False,
