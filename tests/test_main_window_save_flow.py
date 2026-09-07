@@ -11,6 +11,7 @@ from PySide6.QtWidgets import QApplication
 
 from subscripts.playerDataUtil import unpack_player_data_hex
 from subscripts.saveSafety import verify_fch_round_trip
+from tests.qt_support import dispose
 from tests.fixture_saves import realistic_player_data, realistic_root_save, write_fch
 from subscripts.playerDataUtil import pack_player_data_hex
 from ui import mainWindow as mw
@@ -71,7 +72,8 @@ class MainWindowSaveFlowTests(unittest.TestCase):
         self.window.load_save_file(str(self.source))
 
     def tearDown(self):
-        self.window.close()
+        dispose(self.window)
+        self.window = None
         self.stack.close()
         self.temp.cleanup()
 
@@ -134,7 +136,7 @@ class MainWindowSaveFlowTests(unittest.TestCase):
     def test_inconclusive_scan_keeps_destination_and_stores_working_copy(self):
         self.window.misc_tab.name_input.setText("Renamed")
         self.scan = ValheimScan(state=ScanState.INCONCLUSIVE, detail="1 process could not be identified")
-        with patch.object(mw.tempfile, "NamedTemporaryFile", wraps=tempfile.NamedTemporaryFile) as spy:
+        with patch.object(tempfile, "NamedTemporaryFile", wraps=tempfile.NamedTemporaryFile) as spy:
             self.window.save_save_file()
         staged_dirs = [os.path.normcase(str(c.kwargs.get("dir", ""))) for c in spy.call_args_list]
         self.assertNotIn(os.path.normcase(str(self.save_dir)), staged_dirs)

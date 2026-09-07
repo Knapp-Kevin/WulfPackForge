@@ -11,10 +11,19 @@ import logging
 import os
 import sys
 
-from subscripts.binaryIO import STRING_ERRORS, BinaryReader, BinaryWriter  # noqa: F401 (re-exported)
+from subscripts.binaryIO import STRING_ERRORS, BinaryReader, BinaryWriter
 from subscripts.saveErrors import SaveFormatError
 
 logger = logging.getLogger(__name__)
+
+__all__ = ["BinaryReader", "BinaryWriter", "STRING_ERRORS", "MIN_CHARACTER_SAVE_VERSION", "CURRENT_CHARACTER_SAVE_VERSION",
+           "parse_save", "serialize_save", "decompile_fch", "compile_fch", "write_fch_bytes"]
+USAGE = (
+    "Valheim Save File Utility v{version}\n"
+    "Usage:\n"
+    "  Decompile: python fchUtil.py unpack <character.fch> <output.json>\n"
+    "  Compile:   python fchUtil.py pack <input.json> <output.fch>"
+)
 
 # Real saves from version 40 onward round-trip byte-identical through this codec.
 # Older layouts differ in fields this module does not gate on, so they are refused.
@@ -164,10 +173,7 @@ def compile_fch(json_path: str, fch_path: str):
 
 def _main(argv: list) -> int:
     if len(argv) < 4:
-        print(f"Valheim Save File Utility v{CURRENT_CHARACTER_SAVE_VERSION}")
-        print("Usage:")
-        print("  Decompile: python fchUtil.py unpack <character.fch> <output.json>")
-        print("  Compile:   python fchUtil.py pack <input.json> <output.fch>")
+        print(USAGE.format(version=CURRENT_CHARACTER_SAVE_VERSION))
         return 1
     mode, source_file, target_file = argv[1].lower(), argv[2], argv[3]
     if mode == "unpack":
@@ -177,7 +183,7 @@ def _main(argv: list) -> int:
     if mode == "pack":
         compile_fch(source_file, target_file)
         return 0
-    print(f"Error: Unknown mode '{mode}'. Use 'unpack' or 'pack'.")
+    logger.error("Unknown mode '%s'. Use 'unpack' or 'pack'.", mode)
     return 1
 
 

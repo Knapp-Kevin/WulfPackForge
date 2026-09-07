@@ -1,4 +1,3 @@
-import logging
 import os
 import sys
 import tempfile
@@ -14,6 +13,7 @@ import ui.inventoryTab as inv
 import ui.mainWindow as mw
 from subscripts.logSetup import install_excepthook
 from tests.fixture_saves import realistic_root_save, write_fch
+from tests.qt_support import dispose
 
 
 APP = QApplication.instance() or QApplication([])
@@ -31,7 +31,7 @@ class NoCharacterStateTests(unittest.TestCase):
             window.load_save_file(str(source))
             self.assertTrue(window.tabs.isEnabled())
             self.assertTrue(window.file_label.text().startswith("Editing"))
-            window.close()
+            dispose(window)
 
     def test_inventory_actions_refuse_without_a_character(self):
         tab = inv.InventoryTab()

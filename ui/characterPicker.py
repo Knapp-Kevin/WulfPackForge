@@ -117,6 +117,13 @@ class CharacterPickerBar(QWidget):
             self._rescan_wanted = False
             self.refresh(self._last_path)
 
+    def shutdown(self) -> None:
+        """Stop polling and wait for any running scan so nothing outlives the window that owns us."""
+        self._poll.stop()
+        self._rescan_wanted = False
+        self._executor.shutdown(wait=True, cancel_futures=True)
+        self._future = None
+
     def wait_for_scan(self, timeout: float = 30.0) -> None:
         """Spin the event loop until no scan is pending (tests, or callers needing records now)."""
         deadline = time.monotonic() + timeout

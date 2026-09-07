@@ -11,6 +11,7 @@ from PySide6.QtWidgets import QApplication
 
 import ui.mainWindow as mw
 from subscripts.saveFlow import remove_quietly
+from tests.qt_support import dispose
 
 
 APP = QApplication.instance() or QApplication([])
@@ -39,7 +40,7 @@ class HardeningTests(unittest.TestCase):
                     self.assertLogs("ui.mainWindow", level="ERROR") as logs:
                 window = mw.MainWindow(startup_warning=False)
                 window.load_save_file(str(garbage))
-                window.close()
+                dispose(window)
         self.assertIn("Character Could Not Be Opened", QuietMessageBox.calls)
         self.assertTrue(any("broken.fch" in line for line in logs.output), logs.output)
 

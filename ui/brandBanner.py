@@ -25,6 +25,11 @@ class BrandBanner(QLabel):
         self.setAccessibleName(f"{APP_NAME} banner")
         self.setAccessibleDescription(f"{APP_NAME}, {APP_SUBTITLE}, by {APP_AUTHOR}.")
         self.setStyleSheet("QLabel#brandBanner { background-color: #07151c; border-radius: 8px; }")
+        # Parented single-shot timer: if the banner is deleted before it fires, Qt stops it with the widget.
+        self._settle = QTimer(self)
+        self._settle.setSingleShot(True)
+        self._settle.setInterval(0)
+        self._settle.timeout.connect(self.refresh)
         self.refresh()
 
     def refresh(self):
@@ -46,4 +51,4 @@ class BrandBanner(QLabel):
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self.refresh()
-        QTimer.singleShot(0, self.refresh)  # again once the layout has settled
+        self._settle.start()  # again once the layout has settled

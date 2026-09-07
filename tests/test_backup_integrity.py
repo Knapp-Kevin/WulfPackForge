@@ -1,6 +1,5 @@
 import os
 import tempfile
-import time
 import unittest
 from contextlib import ExitStack
 from pathlib import Path
@@ -17,6 +16,7 @@ from subscripts.workspace import (
     BACKUP_RETENTION, SNAPSHOT_RETENTION, WorkspaceError, create_workspace_session, prune_workspace,
 )
 from tests.fixture_saves import realistic_root_save, write_fch
+from tests.qt_support import dispose
 
 
 APP = QApplication.instance() or QApplication([])
@@ -125,7 +125,8 @@ class TypedRoutingTests(unittest.TestCase):
         self.window.load_save_file(str(self.source))
 
     def tearDown(self):
-        self.window.close()
+        dispose(self.window)
+        self.window = None
         self.stack.close()
         self.temp.cleanup()
 
