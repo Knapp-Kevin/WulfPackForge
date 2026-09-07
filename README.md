@@ -150,7 +150,7 @@ Character editing should not require optimism as a recovery plan. Wulfpack Forge
 - **Candidate-first compilation.** Edited data is compiled to a temporary `.fch` candidate inside the Wulfpack Forge workspace rather than written over the destination.
 - **Strict SHA-512 verification.** The generated save envelope and checksum are validated.
 - **Round-trip verification.** The candidate is reparsed and compared with the expected serialized data.
-- **Automatic timestamped backup.** The current active save is copied into the character's Wulfpack Forge workspace before replacement.
+- **Automatic timestamped backup.** The current active save is copied into the character's Wulfpack Forge workspace before replacement, and that backup is hash-verified against the active file before anything is replaced. The workspace keeps the ten most recent opened snapshots and the ten most recent backups per character.
 - **Atomic replacement.** The active destination changes only after verification succeeds.
 - **Failure-safe behavior.** If verification or source-consistency checking fails, the existing active destination is left untouched.
 

@@ -54,7 +54,7 @@ Each active character can have:
 
 - immutable source snapshots captured when the character is opened;
 - a verified working copy;
-- backups captured immediately before an active save is replaced;
+- backups captured immediately before an active save is replaced (verified against the active file first; the ten most recent snapshots and ten most recent backups are kept per character);
 - metadata recording the source path and expected source hash.
 
 Do not move these files into the Valheim character directory or add the Wulfpack Forge workspace to Steam Cloud synchronization. They are recovery and editing state, not active game saves.

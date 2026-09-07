@@ -1,5 +1,6 @@
 import hashlib
 import json
+import logging
 import os
 import platform
 import re
@@ -11,6 +12,12 @@ from pathlib import Path
 from typing import Optional
 
 from subscripts.saveSafety import verify_fch_round_trip
+
+
+logger = logging.getLogger(__name__)
+
+SNAPSHOT_RETENTION = 10
+BACKUP_RETENTION = 10
 
 
 class WorkspaceError(Exception):
@@ -118,6 +125,7 @@ class WorkspaceSession:
         self.last_applied_at = _utc_iso()
         self.last_backup_path = backup_path
         self.persist()
+        prune_workspace(Path(self.workspace_dir))
 
 
 def create_workspace_session(
@@ -150,7 +158,25 @@ def create_workspace_session(
         player_id=player_id if isinstance(player_id, int) else None,
     )
     session.persist()
+    prune_workspace(Path(workspace_dir))
     return session
+
+
+def prune_workspace(workspace_dir: Path, keep_snapshots: int = SNAPSHOT_RETENTION, keep_backups: int = BACKUP_RETENTION):
+    """Delete the oldest opened snapshots and backups beyond the retention counts; the newest always stay."""
+    removed = []
+    for folder, keep in ((workspace_dir / "source", keep_snapshots), (workspace_dir / "backups", keep_backups)):
+        if not folder.is_dir():
+            continue
+        files = sorted((p for p in folder.iterdir() if p.is_file()), key=lambda p: p.stat().st_mtime, reverse=True)
+        for stale in files[keep:]:
+            try:
+                stale.unlink()
+                removed.append(stale)
+                logger.info("Pruned %s (retention %d)", stale, keep)
+            except OSError as exc:
+                logger.warning("Could not prune %s: %s", stale, exc)
+    return removed
 
 
 def _workspace_dirs(workspace_root: Optional[Path], character_id: str):
