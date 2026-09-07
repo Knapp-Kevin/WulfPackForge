@@ -42,6 +42,17 @@ def configure_logging(root: Optional[Path] = None) -> Optional[Path]:
     return path
 
 
+def install_excepthook() -> None:
+    """Log any exception that escapes a Qt slot or the event loop, then defer to the previous hook."""
+    previous = sys.excepthook
+
+    def hook(exc_type, exc_value, exc_traceback):
+        logging.getLogger("wulfpack-forge").error("Unhandled error", exc_info=(exc_type, exc_value, exc_traceback))
+        previous(exc_type, exc_value, exc_traceback)
+
+    sys.excepthook = hook
+
+
 def detach_logging() -> None:
     """Remove the file handler (tests, or before switching roots)."""
     handler = _existing_handler()

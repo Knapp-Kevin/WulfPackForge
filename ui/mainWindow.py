@@ -52,11 +52,13 @@ class MainWindow(QMainWindow):
         self.picker = CharacterPickerBar(discover=lambda: discover_character_records())
         layout.addWidget(self.picker)
         layout.addLayout(self._build_action_row())
-        self.file_label = QLabel("No character loaded")
+        self.file_label = QLabel()
+        self.file_label.setWordWrap(True)
         layout.addWidget(self.file_label)
         self.save_status = SaveStatusWidget()
         layout.addWidget(self.save_status)
         layout.addWidget(self._build_tabs())
+        self._set_loaded(False)
 
         self.picker.open_requested.connect(self.load_save_file)
         self.picker.restore_requested.connect(self.restore_state)
@@ -73,6 +75,11 @@ class MainWindow(QMainWindow):
 
     def _reset_state(self):
         self.__dict__.update(_EMPTY_STATE)
+
+    def _set_loaded(self, loaded: bool, text: str = ""):
+        self.tabs.setEnabled(loaded)
+        self.file_label.setText(text if loaded else messages.NO_CHARACTER_LOADED)
+        self.file_label.setStyleSheet("" if loaded else "font-weight: 600; color: #e6b450;")
 
     def _build_action_row(self):
         row = QHBoxLayout()
@@ -132,7 +139,6 @@ class MainWindow(QMainWindow):
             self.load_save_file(filename)
 
     def restore_state(self, state_path, head_path):
-        """A state becomes the pending edit for the active save; Save Changes applies it."""
         self.load_save_file(state_path, apply_to=head_path)
 
     def load_save_file(self, filename, apply_to=None):
@@ -163,7 +169,7 @@ class MainWindow(QMainWindow):
         for tab in (self.inventory_tab, self.skills_tab, self.appearance_tab):
             tab.load_data(self.player_data)
         self.misc_tab.load_data(self.player_data, self.root_save)
-        self.file_label.setText(f"Editing: {self.root_save.get('character_name')}  •  {os.path.basename(filename)}")
+        self._set_loaded(True, f"Editing: {self.root_save.get('character_name')}  •  {os.path.basename(filename)}")
         self._set_health(valid=True, version=self.root_save.get("version"), source=source, modified_at=modified_at)
         self.tabs.setCurrentWidget(self.appearance_tab)
         self.refresh_discovered_characters()
@@ -171,24 +177,19 @@ class MainWindow(QMainWindow):
     def _reject_load(self, source, modified_at, exc):
         self._reset_state()
         self.btn_save_save.setEnabled(False)
-        self.file_label.setText("No character loaded")
+        self._set_loaded(False)
         self._set_health(valid=False, version=None, source=source, modified_at=modified_at, error=str(exc))
         QMessageBox.critical(self, "Character Could Not Be Opened", messages.could_not_open(exc))
 
-    def _block_save_if_valheim_running(self) -> bool:
-        scan = scan_valheim()
-        if scan.state != ScanState.RUNNING:
+    def _block_for_valheim(self, scan: ValheimScan, working_path=None) -> bool:
+        if scan.state == ScanState.NOT_RUNNING or (working_path is None and scan.state != ScanState.RUNNING):
             return False
-        QMessageBox.critical(self, "Close Valheim Before Saving",
-                             messages.close_valheim_before_saving(valheim_warning_message(scan)))
-        return True
-
-    def _block_replace_if_valheim_uncertain(self, scan: ValheimScan, working_path: str) -> bool:
-        """Only a scan that proves Valheim is closed may touch the active character file."""
-        if scan.state == ScanState.NOT_RUNNING:
-            return False
-        QMessageBox.warning(self, "Changes kept in your Wulfpack Forge working copy",
-                            messages.kept_in_working_copy(valheim_warning_message(scan), working_path))
+        if working_path is None:
+            QMessageBox.critical(self, "Close Valheim Before Saving",
+                                 messages.close_valheim_before_saving(valheim_warning_message(scan)))
+        else:
+            QMessageBox.warning(self, "Changes kept in your Wulfpack Forge working copy",
+                                messages.kept_in_working_copy(valheim_warning_message(scan), working_path))
         return True
 
     def _mark_external_change(self, message):
@@ -200,7 +201,7 @@ class MainWindow(QMainWindow):
         if not self.root_save or not self.player_data or not self.workspace_session or not self.current_fch:
             QMessageBox.warning(self, "No Character Loaded", "Open a character before saving changes.")
             return
-        if self._block_save_if_valheim_running():
+        if self._block_for_valheim(scan_valheim()):
             return
         session = self.workspace_session
         temp_paths = [os.path.join(session.workspace_dir, "working", ".candidate.fch.tmp")]
@@ -228,7 +229,7 @@ class MainWindow(QMainWindow):
         write_fch_bytes(serialize_save(self.root_save), candidate_path)
         verify_fch_round_trip(candidate_path, expected_root=self.root_save)
         store_verified_working_copy(candidate_path, session, expected_root=self.root_save)
-        if self._block_replace_if_valheim_uncertain(scan_valheim(), session.working_path):
+        if self._block_for_valheim(scan_valheim(), session.working_path):
             return
         staged_path = stage_candidate(session.working_path, self.current_fch)
         temp_paths.append(staged_path)

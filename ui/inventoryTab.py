@@ -82,6 +82,8 @@ class InventoryTab(QWidget):
 
     def on_slot_clicked(self, slot: InventorySlot):
         """Standard left-click action on a slot."""
+        if not self.player_data:
+            return
         if slot.item_data:
             self.edit_slot_item(slot)
         else:
@@ -108,6 +110,8 @@ class InventoryTab(QWidget):
                 self.add_item_to_slot(slot)
 
     def edit_slot_item(self, slot: InventorySlot):
+        if not self.player_data or not slot.item_data:
+            return
         dialog = ItemEditDialog(slot.item_data, self)
         result = dialog.exec()
         if result == REMOVE_ITEM:
@@ -139,6 +143,8 @@ class InventoryTab(QWidget):
         self._refresh_panel()
 
     def add_item_to_slot(self, slot: InventorySlot):
+        if not self.player_data:
+            return
         picker = ItemPickerDialog(self)
         if picker.exec() != QDialog.Accepted or not picker.selected_prefab:
             return

@@ -3,7 +3,7 @@ import sys
 
 from PySide6.QtWidgets import QApplication
 
-from subscripts.logSetup import configure_logging
+from subscripts.logSetup import configure_logging, install_excepthook
 
 from ui.branding import app_icon
 from ui.mainWindow import MainWindow
@@ -29,6 +29,7 @@ def _verify_glyph_bundle() -> bool:
 
 def main():
     log_file = configure_logging()
+    install_excepthook()
     logging.getLogger(__name__).info("Wulfpack Forge starting; log file: %s", log_file)
     app = QApplication(sys.argv)
     app.setWindowIcon(app_icon())
