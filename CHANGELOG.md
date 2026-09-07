@@ -7,6 +7,7 @@ The project is currently evolving toward its first branded Wulfpack Forge releas
 ## Unreleased
 
 ### Fixed
+- Overbright colours now keep their hue in the head preview and the colour swatches instead of washing to white: the display colour is the stored colour scaled to its peak, and the multiplier shows as a glow (faint at 2×, strong at 8×). Stored values are unchanged.
 - HDR intensity presets now scale the colour you picked (Normal 1× restores it exactly, Bright 2× doubles it) instead of re-anchoring to a peak of 1.0, so clicking presets in any order never drifts.
 - Beards and moustaches in the head preview are fitted to the face: the beard art is scaled and shifted to the hair image's shoulders instead of being centred, which had left them sitting high.
 - The banner now scales with the window: the whole image stays visible at every width, its height follows the image's proportions (between 90 and 260 px), and it renders sharply on high-DPI displays instead of showing a cropped horizontal slice that jumped on resize.

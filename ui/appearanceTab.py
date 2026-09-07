@@ -13,7 +13,7 @@ from PySide6.QtCore import QSize
 from PySide6.QtGui import QPalette
 from data.appearance import BEARD_NONE, HAIR_NONE, VALHEIM_BEARDS, VALHEIM_HAIRS, display_key
 from ui.fieldTracker import FieldTracker, select_or_add_unknown
-from ui.appearancePreview import AppearancePreview
+from ui.appearancePreview import AppearancePreview, ColorSwatch
 from ui.glyphs import populate_appearance_combo
 from ui.hdrColorControls import (  # noqa: F401  (constants re-exported for callers)
     EXTREME_HDR_THRESHOLD,
@@ -98,9 +98,7 @@ class AppearanceTab(QWidget):
     def _swatch_column(title: str, button_text: str):
         column = QVBoxLayout()
         column.addWidget(QLabel(title))
-        swatch = QWidget()
-        swatch.setFixedSize(100, 30)
-        swatch.setAutoFillBackground(True)
+        swatch = ColorSwatch()
         label = QLabel("Standard")
         button = QPushButton(button_text)
         column.addWidget(swatch)
@@ -211,9 +209,7 @@ class AppearanceTab(QWidget):
         self.tracker.remember("hair_color", list(self.current_hair_rgb))
 
     def update_color_preview(self, widget, rgb_list):
-        palette = widget.palette()
-        palette.setColor(QPalette.Window, _to_qcolor(rgb_list))
-        widget.setPalette(palette)
+        widget.set_color(rgb_list)
 
     def choose_skin_color(self):
         color = QColorDialog.getColor(_to_qcolor(self.current_skin_rgb), self, "Select Skin Color")
