@@ -188,8 +188,9 @@ class ColorSwatch(QWidget):
         strength = bloom_strength(self._peak)
         if strength > 0.0:
             glow = QColor(self._color)
-            for width, alpha in ((6, 0.35), (3, 0.6)):
-                glow.setAlphaF(alpha * strength)
+            visible = 0.3 + 0.7 * strength  # even 2x must read as lit at swatch size
+            for width, alpha in ((6, 0.6), (3, 0.9)):
+                glow.setAlphaF(alpha * visible)
                 painter.setPen(QPen(glow, width))
                 painter.drawRect(rect)
             painter.setCompositionMode(QPainter.CompositionMode_Plus)

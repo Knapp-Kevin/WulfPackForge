@@ -82,7 +82,9 @@ class AppearancePreviewTests(unittest.TestCase):
         self.assertLess(centre.blueF(), 0.4)
         swatch.set_color([1.0, 0.5, 0.25])
         cool = swatch.grab().toImage()
-        self.assertGreater(hot.pixelColor(2, 2).lightness(), cool.pixelColor(2, 2).lightness())
+        hot_rim, cool_rim = hot.pixelColor(2, 2), cool.pixelColor(2, 2)
+        self.assertLess(abs(cool_rim.redF() - cool_rim.blueF()), 0.05, "1x rim should be the plain background")
+        self.assertGreater(hot_rim.redF() - hot_rim.blueF(), 0.15, "overbright rim should carry the colour")
 
     def test_female_model_has_no_beard_and_matches_beardnone(self):
         bearded = compose_preview("Hair7", "Beard3", SKIN, HAIR, 0, 256).toImage()
