@@ -20,7 +20,7 @@ Once the first public Windows release is published, the intended player path is 
 
 ## Current availability
 
-**No public Windows release has been published yet.** The Windows workflow builds and smoke-tests `WulfpackForge.exe` and `WulfpackForge-windows-x64.zip`, but its temporary GitHub Actions artifacts are validation evidence, not durable public releases.
+**No public Windows release has been published yet.** The Windows workflow builds and smoke-tests `WulfpackForge.exe` and `WulfpackForge-windows-x64.zip`; its temporary GitHub Actions artifacts are validation evidence, not durable public releases. Release-candidate tags (for example `v0.9.0-rc.1`) produce **draft pre-releases** that only the maintainer can see, so the release path is exercised before anything is published.
 
 You can still use Wulfpack Forge now by running it from source. On Windows, the included launcher reduces setup and startup to one file after Python is installed. This is a source setup, not a packaged installer.
 

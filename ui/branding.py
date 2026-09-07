@@ -7,7 +7,8 @@ from PySide6.QtGui import QIcon, QImageReader
 APP_NAME = "Wulfpack Forge"
 APP_SUBTITLE = "Character Editor for Valheim"
 APP_AUTHOR = "Frostwulf"
-APP_WINDOW_TITLE = f"{APP_NAME} | {APP_SUBTITLE}"
+APP_VERSION = "0.9.0-rc.1"
+APP_WINDOW_TITLE = f"{APP_NAME} | {APP_SUBTITLE} | v{APP_VERSION}"
 BANNER_RELATIVE_PATH = "assets/wulfpack-forge-banner.jpg"
 MIN_BANNER_BYTES = 12_000
 APP_ICON_RELATIVE_PATH = "assets/FrostWulf-favicon.png"
