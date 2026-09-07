@@ -44,6 +44,7 @@ Do not present planned behavior as implemented behavior.
 - Add tests for behavioral changes.
 - Update README/support/governance documentation when user-visible or policy behavior changes.
 - Run source tests before opening a PR.
+- Keep every source file at or below 250 lines, every function at or below 40 lines, and control-flow nesting at or below three levels; do not use star imports or import PySide6 outside `ui/`. `tests/test_razor.py` enforces these limits.
 - Require the Windows packaged-app workflow for changes affecting assets, packaging, runtime imports, or bundle behavior.
 - Merge only after the required evidence is green.
 

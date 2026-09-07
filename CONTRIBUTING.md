@@ -31,6 +31,18 @@ Compile-check the Python sources with:
 python -m compileall data subscripts ui tools main.py
 ```
 
+### Structural limits
+
+`tests/test_razor.py` enforces the repository's simplicity limits:
+
+- source files must not exceed 250 lines;
+- functions must not exceed 40 lines;
+- control-flow nesting must not exceed three levels;
+- star imports are prohibited;
+- PySide6 imports belong only under `ui/`.
+
+Keep new code inside these limits instead of weakening the test. Run the Razor test directly with `python -m unittest tests.test_razor` when restructuring code.
+
 ## Branches
 
 Use short-lived branches with descriptive names, for example:
@@ -67,6 +79,13 @@ The generated catalog and curated write constraints have different responsibilit
 - Unknown and modded prefabs must remain editable through the raw-ID path.
 
 When refreshing the catalog, pin the expected Valheim version and inspect the generated diff for unexpected removals, duplicates, and source drift.
+
+Regenerate the two versioned data tables with:
+
+```bash
+python tools/update_item_catalog.py --expected-version 0.221.12
+python tools/update_item_durability.py
+```
 
 ## User experience standards
 

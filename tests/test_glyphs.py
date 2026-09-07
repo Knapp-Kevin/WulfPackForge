@@ -93,6 +93,9 @@ class GlyphRenderTests(unittest.TestCase):
     def test_all_item_masters_are_decodable_transparent_runtime_assets(self):
         self.assertTrue(ui_glyphs.glyph_bundle_is_usable())
 
+    def test_all_appearance_thumbnails_are_decodable_runtime_assets(self):
+        self.assertTrue(ui_glyphs.appearance_bundle_is_usable())
+
 
 if __name__ == "__main__":
     unittest.main()
