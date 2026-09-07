@@ -51,7 +51,16 @@ def violations_in(path):
             found.append(f"{rel}:{node.lineno} star import from {node.module}")
         if rel.split("/")[0] in NO_QT_DIRS and _imports_qt(node):
             found.append(f"{rel}:{node.lineno} PySide6 import below the UI layer")
+        if _connects_self_lambda(node):
+            found.append(f"{rel}:{node.lineno} signal connected to a lambda capturing self (freed by GC, not deterministically)")
     return found
+
+
+def _connects_self_lambda(node) -> bool:
+    if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "connect"):
+        return False
+    return any(isinstance(arg, ast.Lambda) and any(isinstance(n, ast.Name) and n.id == "self" for n in ast.walk(arg))
+               for arg in node.args)
 
 
 def _imports_qt(node) -> bool:

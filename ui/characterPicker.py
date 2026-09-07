@@ -43,11 +43,11 @@ class CharacterPickerBar(QWidget):
         self.discovery_help.setVisible(False)
         layout.addWidget(self.discovery_help)
 
-        self.btn_refresh_characters.clicked.connect(lambda: self.refresh(self._last_path))
+        self.btn_refresh_characters.clicked.connect(self._refresh_again)
         self.btn_open_discovered.clicked.connect(self._emit_open)
         self.btn_new_character.clicked.connect(self.new_requested)
         self.btn_states.clicked.connect(self._show_states)
-        self.character_combo.activated.connect(lambda _index: self._update_tooltip())
+        self.character_combo.activated.connect(self._update_tooltip)
 
     def _build_row(self) -> QHBoxLayout:
         row = QHBoxLayout()
@@ -71,6 +71,9 @@ class CharacterPickerBar(QWidget):
         row.addWidget(self.btn_states)
         row.addWidget(self.btn_new_character)
         return row
+
+    def _refresh_again(self, _checked=False):
+        self.refresh(self._last_path)
 
     def refresh(self, current_path):
         self._last_path = current_path
@@ -114,7 +117,7 @@ class CharacterPickerBar(QWidget):
         index = self.character_combo.currentIndex()
         return self.records[index] if 0 <= index < len(self.records) else None
 
-    def _update_tooltip(self):
+    def _update_tooltip(self, _index=None):
         record = self.current_record()
         head = record.head if record else None
         if head is None:
