@@ -36,6 +36,10 @@ If a character is visible on another machine but not this one, allow Steam to sy
 
 Do not provide your Steam password or authentication tokens to Wulfpack Forge or to anyone claiming they are required for support.
 
+## Log file
+
+Wulfpack Forge writes a rotating log (1 MB, three backups) to `%LOCALAPPDATA%\WulfpackForge\logs\wulfpack-forge.log` on Windows, or the equivalent workspace root on other systems. Failures to open or save a character are recorded there with the full error. Attach the relevant lines to a bug report; the log contains file paths and error text only.
+
 ## Wulfpack Forge workspace
 
 Wulfpack Forge keeps editing protection outside Valheim's own save directories. On Windows the default workspace root is:
@@ -90,7 +94,8 @@ Please include:
 - the action you attempted;
 - what you expected;
 - what happened instead;
-- exact error text when available.
+- exact error text when available;
+- the matching lines from `logs\wulfpack-forge.log` in the Wulfpack Forge workspace.
 
 For UI problems, screenshots are useful. For save-format problems, use a disposable or sanitized character whenever possible.
 

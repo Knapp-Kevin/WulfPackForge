@@ -19,6 +19,7 @@ The project is currently evolving toward its first branded Wulfpack Forge releas
 - `--smoke-test` no longer blocks on the "Valheim Running" dialog when the game happens to be open on the machine running the check.
 
 ### Added
+- A rotating log file under the Wulfpack Forge workspace root (`logs/wulfpack-forge.log`, 1 MB with three backups) so failures to open or save a character leave a trace that can be attached to a bug report.
 - Guarded **Advanced HDR / Overbright Colors** controls for skin and shared hair/beard color floats, with explicit opt-in before entering values above 1.0 (from PR #16).
 - RGB float controls from `0.0` through `10.0`; negative/underbright values are prohibited at the widget boundary.
 - Hue-preserving Normal 1×, Bright 2×, Glow 4×, and Extreme 8× appearance intensity presets, selectable for skin, hair/beard, or both. The head preview follows overbright edits in hue only.
