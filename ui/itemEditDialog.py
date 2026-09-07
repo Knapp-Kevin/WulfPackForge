@@ -16,8 +16,12 @@ from data.items import CATALOG_GAME_VERSION, completion_labels, resolve_item
 from ui.glyphs import item_pixmap
 
 
+REMOVE_ITEM = 2  # dialog result meaning "take this item out of the inventory"
+
 class ItemEditDialog(QDialog):
     """Edit an inventory item with catalog help while preserving modded values."""
+
+    REMOVE = REMOVE_ITEM
 
     def __init__(self, item_data, parent=None):
         super().__init__(parent)
@@ -82,6 +86,8 @@ class ItemEditDialog(QDialog):
         layout.addRow("Equipped:", self.equipped_input)
 
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self.btn_remove = buttons.addButton("Remove from Inventory", QDialogButtonBox.DestructiveRole)
+        self.btn_remove.clicked.connect(self.remove)
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
         layout.addRow(buttons)
@@ -174,6 +180,10 @@ class ItemEditDialog(QDialog):
         """Only items with more than one style (or unknown items) show the variant field."""
         self.variant_input.setVisible(visible)
         self.variant_label.setVisible(visible)
+
+    def remove(self):
+        """Close with ``REMOVE``; the inventory tab performs and confirms the deletion."""
+        self.done(self.REMOVE)
 
     def accept(self):
         raw_value = self.prefab_input.text().strip()

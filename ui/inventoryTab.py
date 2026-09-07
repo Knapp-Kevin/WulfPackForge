@@ -15,7 +15,7 @@ from data.equipment import resolve_equip
 from data.items import resolve_item
 from ui.equipmentPanel import EquipmentPanel
 from ui.inventorySlot import InventorySlot
-from ui.itemEditDialog import ItemEditDialog
+from ui.itemEditDialog import REMOVE_ITEM, ItemEditDialog
 from ui.itemPickerDialog import ItemPickerDialog
 
 class InventoryTab(QWidget):
@@ -39,6 +39,13 @@ class InventoryTab(QWidget):
         self.equip_status.setWordWrap(True)
         self.equip_status.setStyleSheet("color: #c4d8df;")
         self.main_layout.addWidget(self.equip_status)
+        self.usage_hint = QLabel(
+            "Left-click a slot to edit it or add an item. Right-click for the menu. Drag an item to move or swap it. "
+            "Press Delete on a slot, or use Remove from Inventory in the editor, to take an item out."
+        )
+        self.usage_hint.setWordWrap(True)
+        self.usage_hint.setStyleSheet("color: #8fa3ab;")
+        self.main_layout.addWidget(self.usage_hint)
         
         self.slots = {}
         self.init_empty_grid()
@@ -101,24 +108,34 @@ class InventoryTab(QWidget):
 
     def edit_slot_item(self, slot: InventorySlot):
         dialog = ItemEditDialog(slot.item_data, self)
-        if dialog.exec() == QDialog.Accepted:
+        result = dialog.exec()
+        if result == REMOVE_ITEM:
+            self.delete_slot_item(slot)
+        elif result == QDialog.Accepted:
             updated = dialog.get_updated_data()
             slot.item_data.update(updated)
             slot.update_visuals()
             self._enforce_equip_rule(slot.item_data)
             self._refresh_panel()
 
-    def delete_slot_item(self, slot: InventorySlot):
-        confirm = QMessageBox.question(
-            self, "Confirm Delete", 
-            f"Are you sure you want to delete the item in slot ({slot.grid_x}, {slot.grid_y})?",
-            QMessageBox.Yes | QMessageBox.No
-        )
-        if confirm == QMessageBox.Yes:
-            if slot.item_data in self.player_data["inventory"]:
-                self.player_data["inventory"].remove(slot.item_data)
-            slot.clear_item()
-            self._refresh_panel()
+    def delete_slot_item(self, slot: InventorySlot, confirm: bool = True):
+        """Take the slot's item out of the inventory; every removal path ends here."""
+        if not slot.item_data or not self.player_data:
+            return
+        if confirm:
+            item = resolve_item(slot.item_data.get("prefab", ""))
+            name = item.display_name if item else slot.item_data.get("prefab", "this item")
+            answer = QMessageBox.question(
+                self, "Remove Item",
+                f"Remove {name} ({slot.item_data.get('prefab', '')}) from slot ({slot.grid_x}, {slot.grid_y})?",
+                QMessageBox.Yes | QMessageBox.No,
+            )
+            if answer != QMessageBox.Yes:
+                return
+        if slot.item_data in self.player_data["inventory"]:
+            self.player_data["inventory"].remove(slot.item_data)
+        slot.clear_item()
+        self._refresh_panel()
 
     def add_item_to_slot(self, slot: InventorySlot):
         picker = ItemPickerDialog(self)

@@ -97,6 +97,13 @@ class InventorySlot(QToolButton):
         painter.setPen(ink)
         painter.drawText(rect, Qt.AlignCenter, text)
 
+    def keyPressEvent(self, event):
+        parent = self.parent()
+        if self.item_data and event.key() in (Qt.Key_Delete, Qt.Key_Backspace) and hasattr(parent, "delete_slot_item"):
+            parent.delete_slot_item(self)
+            return
+        super().keyPressEvent(event)
+
     # ------------------------------------------------------------ drag/drop
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:

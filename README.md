@@ -55,7 +55,7 @@ Inventory editing combines the familiar character grid with original item-catego
 | Area | Capabilities |
 |---|---|
 | Appearance | Skin color, hair color, beard color, hair style, beard style, and supported model settings, with a live head preview that updates as you choose |
-| Inventory | Large illustrated grid with stack and quality badges, drag-and-drop to move or swap items, and an Equipped panel showing what occupies each slot; item picker organised by category, then type, then material (Weapons > Swords > Bronze) with counts, a breadcrumb, and clothing, accessories, and creature gear kept apart from armour; search, raw prefab entry for modded items; stacks, durability, quality, styles where an item has them, and equipped state with the game's one-item-per-slot rule |
+| Inventory | Large illustrated grid with stack and quality badges, drag-and-drop to move or swap items, and an Equipped panel showing what occupies each slot; item picker organised by category, then type, then material (Weapons > Swords > Bronze) with counts, a breadcrumb, and clothing, accessories, and creature gear kept apart from armour; search, raw prefab entry for modded items; stacks, durability, quality, styles where an item has them, and equipped state with the game's one-item-per-slot rule; remove an item with Remove from Inventory in the editor, the Delete key, or right-click |
 | Skills | Supported Valheim skill levels, including adding one or all vanilla skills the character does not have yet |
 | Stats | Supported health, stamina, progression, and related character values |
 | Character details | Supported character-level fields such as name |
