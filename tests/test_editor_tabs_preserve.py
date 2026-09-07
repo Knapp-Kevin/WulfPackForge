@@ -56,6 +56,41 @@ class SkillsTabPreserveTests(unittest.TestCase):
         self.assertEqual(second, baseline)
 
 
+class SkillsTabAddTests(unittest.TestCase):
+    def _addable(self, tab):
+        return [tab.add_skill_combo.itemText(i) for i in range(tab.add_skill_combo.count())]
+
+    def test_missing_vanilla_skills_can_be_added_and_raised(self):
+        data = loaded_player_data()
+        baseline = copy.deepcopy(data)
+        tab = SkillsTab()
+        tab.load_data(data)
+        addable = self._addable(tab)
+        self.assertIn("Axes", addable)
+        self.assertNotIn("Swords", addable)
+        self.assertNotIn("None", addable)
+
+        tab.add_skill_combo.setCurrentIndex(addable.index("Axes"))
+        tab.add_skill()
+        tab.save_changes()
+        self.assertEqual(data["skills"][:2], baseline["skills"])
+        self.assertEqual(data["skills"][2], {"id": 7, "level": 0.0, "xp": 0.0})
+        self.assertNotIn("Axes", self._addable(tab))
+
+        tab.table.cellWidget(2, 1).setValue(25.0)
+        tab.save_changes()
+        self.assertEqual(data["skills"][2]["level"], 25.0)
+
+    def test_empty_skill_list_offers_every_vanilla_skill(self):
+        data = loaded_player_data()
+        data["skills"] = []
+        tab = SkillsTab()
+        tab.load_data(data)
+        from data.skills import VALHEIM_SKILLS
+        self.assertEqual(len(self._addable(tab)), len(VALHEIM_SKILLS) - 1)
+        self.assertTrue(tab.btn_add_skill.isEnabled())
+
+
 class AppearanceTabPreserveTests(unittest.TestCase):
     def test_noop_preserves_unknown_hair_and_model(self):
         data = loaded_player_data()
@@ -79,6 +114,27 @@ class AppearanceTabPreserveTests(unittest.TestCase):
         self.assertNotIn("Unknown (HairModded99)", labels)
         self.assertEqual(tab.hair_combo.currentData(), "Hair1")
 
+    def test_empty_hair_shows_none_entry_and_is_preserved(self):
+        data = loaded_player_data()
+        data["hair"] = ""
+        data["beard"] = ""
+        baseline = copy.deepcopy(data)
+        tab = AppearanceTab()
+        tab.load_data(data)
+        self.assertEqual(tab.hair_combo.currentData(), "HairNone")
+        self.assertEqual(tab.beard_combo.currentData(), "BeardNone")
+        tab.save_changes()
+        self.assertEqual(data, baseline)
+
+    def test_choosing_none_writes_the_catalog_none_prefab(self):
+        data = loaded_player_data()
+        data["hair"] = "Hair7"
+        tab = AppearanceTab()
+        tab.load_data(data)
+        tab.hair_combo.setCurrentIndex(tab.hair_combo.findData("HairNone"))
+        tab.save_changes()
+        self.assertEqual(data["hair"], "HairNone")
+
     def test_picking_a_colour_writes_only_skin_color(self):
         data = loaded_player_data()
         baseline = copy.deepcopy(data)
@@ -91,6 +147,44 @@ class AppearanceTabPreserveTests(unittest.TestCase):
         for key in baseline:
             if key != "skin_color":
                 self.assertEqual(data[key], baseline[key], key)
+
+    def test_overbright_mode_substitutes_the_picker(self):
+        tab = AppearanceTab()
+        tab.load_data(loaded_player_data())
+        self.assertTrue(tab.btn_skin_color.isVisibleTo(tab))
+        self.assertTrue(tab.btn_hair_color.isVisibleTo(tab))
+        self.assertFalse(tab.hdr_controls.isVisibleTo(tab))
+
+        tab.overbright_checkbox.setChecked(True)
+        self.assertFalse(tab.btn_skin_color.isVisibleTo(tab))
+        self.assertFalse(tab.btn_hair_color.isVisibleTo(tab))
+        self.assertTrue(tab.hdr_controls.isVisibleTo(tab))
+        self.assertTrue(tab.skin_intensity_label.isVisibleTo(tab))
+
+        data = loaded_player_data()
+        data["hair_color"] = [1.0, 2.0, 4.0]
+        loaded_hdr = AppearanceTab()
+        loaded_hdr.load_data(data)
+        self.assertTrue(loaded_hdr.hdr_controls.isVisibleTo(loaded_hdr))
+        self.assertFalse(loaded_hdr.btn_hair_color.isVisibleTo(loaded_hdr))
+
+    def test_presets_anchor_to_the_picked_colour(self):
+        data = loaded_player_data()
+        data["skin_color"] = [0.8, 0.6, 0.4]
+        data["hair_color"] = [1.0, 2.0, 4.0]
+        tab = AppearanceTab()
+        tab.load_data(data)
+        tab.overbright_checkbox.setChecked(True)
+        tab.preset_target_combo.setCurrentIndex(tab.preset_target_combo.findData("skin"))
+        seen = []
+        for intensity in (2.0, 8.0, 2.0, 1.0):
+            tab.apply_intensity_preset(intensity)
+            seen.append([round(v, 6) for v in tab.current_skin_rgb])
+        self.assertEqual(seen, [[1.6, 1.2, 0.8], [6.4, 4.8, 3.2], [1.6, 1.2, 0.8], [0.8, 0.6, 0.4]])
+
+        tab.preset_target_combo.setCurrentIndex(tab.preset_target_combo.findData("hair"))
+        tab.apply_intensity_preset(1.0)
+        self.assertEqual([round(v, 6) for v in tab.current_hair_rgb], [0.25, 0.5, 1.0])
 
     def test_hdr_controls_are_opt_in_and_negative_values_are_prohibited(self):
         tab = AppearanceTab()

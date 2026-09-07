@@ -68,49 +68,46 @@ def fetch_text(url: str) -> str:
         return response.read().decode("utf-8")
 
 
-def parse_catalog(html: str, source_url: str, expected_version: str | None) -> dict:
-    parser = ItemTableParser()
-    parser.feed(html)
-
+def _detect_game_version(parser: ItemTableParser, expected_version: str | None) -> str:
     page_text = " ".join(" ".join(parser.page_text).split())
     match = re.search(r"generated from Valheim\s+([0-9][0-9A-Za-z._-]*)", page_text)
     if not match:
         raise RuntimeError("Could not determine Valheim version from JotunnDoc item list")
-
     game_version = match.group(1)
     if expected_version and game_version != expected_version:
         raise RuntimeError(
             f"JotunnDoc reports Valheim {game_version}, expected {expected_version}. "
             "Review the game update before refreshing the catalog."
         )
+    return game_version
 
+
+def _rows_to_items(rows) -> list[dict]:
     items: list[dict] = []
     seen: set[str] = set()
-
-    for cells, images in parser.rows:
+    for cells, images in rows:
         if len(cells) < 6 or cells[0] == "Item":
             continue
-
-        prefab, asset_id, _token, display_name, item_type, _description = cells[:6]
-        prefab = prefab.strip()
-        display_name = display_name.strip()
-        item_type = item_type.strip()
-        asset_id = asset_id.strip()
+        prefab, asset_id, _token, display_name, item_type, _description = (cell.strip() for cell in cells[:6])
         if not prefab or prefab.lower() in seen:
             continue
-
         seen.add(prefab.lower())
-        items.append(
-            {
-                "prefab": prefab,
-                "display_name": display_name or prefab,
-                "item_type": item_type,
-                "asset_id": asset_id,
-                "selectable": bool(images and images[0]),
-            }
-        )
-
+        items.append({
+            "prefab": prefab,
+            "display_name": display_name or prefab,
+            "item_type": item_type,
+            "asset_id": asset_id,
+            "selectable": bool(images and images[0]),
+        })
     items.sort(key=lambda item: item["prefab"].lower())
+    return items
+
+
+def parse_catalog(html: str, source_url: str, expected_version: str | None) -> dict:
+    parser = ItemTableParser()
+    parser.feed(html)
+    game_version = _detect_game_version(parser, expected_version)
+    items = _rows_to_items(parser.rows)
     selectable_count = sum(1 for item in items if item["selectable"])
     if len(items) < 300 or selectable_count < 200:
         raise RuntimeError(

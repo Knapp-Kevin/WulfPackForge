@@ -63,7 +63,7 @@ Canonical inventory masters live in `assets/glyphs/items/`. They are original 51
 - record approved asset hashes in `assets/glyphs/SHA256SUMS`;
 - do not substitute extracted Valheim art, official logos, or VikingEditor branding.
 
-Hair and beard thumbnails remain a separate backlog in `docs/IMAGE_GEN_INDEX.md`; their reserved paths are not runtime requirements yet.
+The complete original hair and beard thumbnail sets live under `assets/glyphs/hair/` and `assets/glyphs/beard/`; approved asset hashes are recorded alongside the inventory masters in `assets/glyphs/SHA256SUMS`.
 
 ## UI direction
 

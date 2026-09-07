@@ -1,4 +1,5 @@
 from PySide6.QtWidgets import (
+    QComboBox,
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
@@ -6,7 +7,8 @@ from PySide6.QtWidgets import (
     QTableWidget,
     QTableWidgetItem,
     QDoubleSpinBox,
-    QHeaderView
+    QHeaderView,
+    QLabel,
 )
 
 from PySide6.QtCore import Qt
@@ -24,15 +26,14 @@ class SkillsTab(QWidget):
         self.tracker = FieldTracker()
 
         layout = QVBoxLayout(self)
-
-        toolbar = QHBoxLayout()
-        self.btn_max_all = QPushButton("Maximize All (Lvl 100)")
-        self.btn_set_all0 = QPushButton("Set All to 0")
-        toolbar.addWidget(self.btn_max_all)
-        toolbar.addWidget(self.btn_set_all0)
-        toolbar.addStretch()
-        layout.addLayout(toolbar)
-
+        layout.addLayout(self._build_toolbar())
+        self.empty_hint = QLabel(
+            "This character has no skills yet, which is how the game writes a brand-new character. "
+            "Use Add Skill for one skill, or Add All Skills to start every vanilla skill at level 0."
+        )
+        self.empty_hint.setWordWrap(True)
+        self.empty_hint.setVisible(False)
+        layout.addWidget(self.empty_hint)
         self.table = QTableWidget()
         self.table.setColumnCount(3)
         self.table.setHorizontalHeaderLabels(["Skill Name", "Level (0-100)", "XP Accumulator"])
@@ -40,6 +41,26 @@ class SkillsTab(QWidget):
         layout.addWidget(self.table)
         self.btn_max_all.clicked.connect(self.maximize_all_skills)
         self.btn_set_all0.clicked.connect(self.set_all_skills0)
+        self.btn_add_skill.clicked.connect(self.add_skill)
+        self.btn_add_all_skills.clicked.connect(self.add_all_skills)
+
+    def _build_toolbar(self) -> QHBoxLayout:
+        toolbar = QHBoxLayout()
+        self.btn_max_all = QPushButton("Maximize All (Lvl 100)")
+        self.btn_set_all0 = QPushButton("Set All to 0")
+        toolbar.addWidget(self.btn_max_all)
+        toolbar.addWidget(self.btn_set_all0)
+        toolbar.addStretch()
+        self.add_skill_combo = QComboBox()
+        self.add_skill_combo.setMinimumWidth(180)
+        self.btn_add_skill = QPushButton("Add Skill")
+        self.btn_add_skill.setEnabled(False)
+        self.btn_add_all_skills = QPushButton("Add All Skills")
+        self.btn_add_all_skills.setEnabled(False)
+        toolbar.addWidget(self.add_skill_combo)
+        toolbar.addWidget(self.btn_add_skill)
+        toolbar.addWidget(self.btn_add_all_skills)
+        return toolbar
 
     def load_data(self, player_data):
         self.tracker.clear()
@@ -47,6 +68,44 @@ class SkillsTab(QWidget):
         self.table.setRowCount(0)
         for index, skill in enumerate(player_data.get("skills", [])):
             self.add_skill_row(index, skill)
+        self._refresh_addable_skills()
+
+    def _refresh_addable_skills(self):
+        """Offer every vanilla skill the character does not have yet."""
+        self.add_skill_combo.clear()
+        present = {skill.get("id") for skill in (self.player_data or {}).get("skills", [])}
+        missing = sorted(
+            ((name, skill_id) for skill_id, name in VALHEIM_SKILLS.items() if skill_id and skill_id not in present),
+            key=lambda pair: pair[0].lower(),
+        )
+        for name, skill_id in missing:
+            self.add_skill_combo.addItem(name, skill_id)
+        enabled = bool(self.player_data) and bool(missing)
+        self.btn_add_skill.setEnabled(enabled)
+        self.btn_add_all_skills.setEnabled(enabled)
+        self.empty_hint.setVisible(bool(self.player_data) and self.table.rowCount() == 0)
+
+    def add_skill(self):
+        """Append the selected missing skill at level 0 so the player can raise it."""
+        skill_id = self.add_skill_combo.currentData()
+        if not self.player_data or skill_id is None:
+            return
+        self._append_skill(int(skill_id))
+        self._refresh_addable_skills()
+
+    def add_all_skills(self):
+        """Append every vanilla skill the character lacks, all at level 0."""
+        if not self.player_data:
+            return
+        for index in range(self.add_skill_combo.count()):
+            self._append_skill(int(self.add_skill_combo.itemData(index)))
+        self._refresh_addable_skills()
+
+    def _append_skill(self, skill_id: int):
+        skills = self.player_data.setdefault("skills", [])
+        skill = {"id": skill_id, "level": 0.0, "xp": 0.0}
+        skills.append(skill)
+        self.add_skill_row(len(skills) - 1, skill)
 
     def add_skill_row(self, index, skill_data):
         row = self.table.rowCount()

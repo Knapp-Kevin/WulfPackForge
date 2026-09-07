@@ -23,6 +23,30 @@ class GlyphResolutionTests(unittest.TestCase):
         self.assertEqual(glyph_for(resolve_item("HelmetBronze")), ("G15_helmet", "bronze"))
         self.assertEqual(glyph_for(resolve_item("Wood")), ("G20_ingot", "wood"))
 
+    def test_refined_glyph_ids(self):
+        from data.glyphs import GLYPH_IDS, PENDING_GLYPH_IDS
+        expected = {
+            "BombOoze": "G24_bomb", "BombBlob_Frost": "G24_bomb", "PickaxeIron": "G25_pickaxe",
+            "Hammer": "G26_hammer", "Hoe": "G27_hoe", "Cultivator": "G27_hoe", "CryptKey": "G28_key",
+            "HildirKey_forestcrypt": "G28_key", "DragonEgg": "G29_egg", "SaddleLox": "G30_misc",
+            "Feaster": "G30_misc", "Tankard": "G31_tankard", "FishingRod": "G32_fishing",
+            "FishingBait": "G32_fishing", "FistBjornClaw": "G33_fist", "Scythe": "G34_scythe",
+            "THSwordKrom": "G06_greatsword", "Torch": "G23_torch",
+        }
+        for prefab, glyph in expected.items():
+            self.assertEqual(glyph_for(resolve_item(prefab))[0], glyph, prefab)
+        # Ids migrate from PENDING_GLYPH_IDS to GLYPH_IDS as their masters are committed.
+        self.assertFalse(set(PENDING_GLYPH_IDS) & set(GLYPH_IDS))
+        self.assertEqual(len(set(PENDING_GLYPH_IDS) | set(GLYPH_IDS)), 34)
+        for glyph in set(expected.values()):
+            self.assertIn(glyph, set(PENDING_GLYPH_IDS) | set(GLYPH_IDS), glyph)
+
+    def test_pending_glyph_renders_placeholder(self):
+        ui_glyphs.clear_cache()
+        pixmap = ui_glyphs.item_pixmap("BombOoze", 64)
+        self.assertFalse(pixmap.isNull())
+        self.assertGreater(pixmap.toImage().pixelColor(32, 32).alpha(), 0)
+
     def test_unknown_prefab_falls_back_to_slate_ingot(self):
         self.assertEqual(glyph_for(None), ("G20_ingot", "slate"))
         self.assertEqual(glyph_for(resolve_item("MyModdedLegendaryHammer")), ("G20_ingot", "slate"))
@@ -68,6 +92,9 @@ class GlyphRenderTests(unittest.TestCase):
 
     def test_all_item_masters_are_decodable_transparent_runtime_assets(self):
         self.assertTrue(ui_glyphs.glyph_bundle_is_usable())
+
+    def test_all_appearance_thumbnails_are_decodable_runtime_assets(self):
+        self.assertTrue(ui_glyphs.appearance_bundle_is_usable())
 
 
 if __name__ == "__main__":

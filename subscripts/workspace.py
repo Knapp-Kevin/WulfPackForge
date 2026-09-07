@@ -134,52 +134,58 @@ def create_workspace_session(
 
     character_name = str(root_save.get("character_name") or source.stem).strip() or source.stem
     player_id = root_save.get("player_id")
-    identity_seed = f"{source}|{player_id if player_id is not None else ''}".encode("utf-8")
-    identity = hashlib.sha256(identity_seed).hexdigest()[:12]
-    character_id = f"{_slug(character_name)}-{identity}"
+    character_id = _character_id(source, character_name, player_id)
+    workspace_dir, source_dir, working_dir, backups_dir = _workspace_dirs(workspace_root, character_id)
+    opened_hash, stat = file_sha256(source), source.stat()
+    snapshot_path = _snapshot_source(source, source_dir)
+    working_path = _verified_working_copy(source, working_dir)
+    session = WorkspaceSession(
+        character_id=character_id, character_name=character_name, source_path=str(source),
+        workspace_dir=str(workspace_dir), source_snapshot_path=str(snapshot_path),
+        working_path=str(working_path), backups_dir=str(backups_dir),
+        metadata_path=str(workspace_dir / "metadata.json"), opened_at=_utc_iso(),
+        opened_sha256=opened_hash, expected_source_sha256=opened_hash,
+        expected_source_size=stat.st_size, expected_source_mtime_ns=stat.st_mtime_ns,
+        working_sha256=file_sha256(working_path),
+        player_id=player_id if isinstance(player_id, int) else None,
+    )
+    session.persist()
+    return session
 
+
+def _workspace_dirs(workspace_root: Optional[Path], character_id: str):
     root = Path(workspace_root or default_workspace_root())
     workspace_dir = root / "characters" / "active" / character_id
-    source_dir = workspace_dir / "source"
-    working_dir = workspace_dir / "working"
-    backups_dir = workspace_dir / "backups"
-    for directory in (source_dir, working_dir, backups_dir):
+    dirs = (workspace_dir / "source", workspace_dir / "working", workspace_dir / "backups")
+    for directory in dirs:
         directory.mkdir(parents=True, exist_ok=True)
+    return (workspace_dir, *dirs)
 
-    opened_hash = file_sha256(source)
-    stat = source.stat()
+
+def _character_id(source: Path, character_name: str, player_id) -> str:
+    identity_seed = f"{source}|{player_id if player_id is not None else ''}".encode("utf-8")
+    identity = hashlib.sha256(identity_seed).hexdigest()[:12]
+    return f"{_slug(character_name)}-{identity}"
+
+
+def _snapshot_source(source: Path, source_dir: Path) -> Path:
+    """Immutable copy of the source as it was opened; never overwrites an earlier snapshot."""
     snapshot_path = source_dir / f"{_utc_stamp()}-opened.fch"
     counter = 1
     while snapshot_path.exists():
         snapshot_path = source_dir / f"{_utc_stamp()}-opened-{counter}.fch"
         counter += 1
     shutil.copy2(source, snapshot_path)
+    return snapshot_path
 
+
+def _verified_working_copy(source: Path, working_dir: Path) -> Path:
     working_path = working_dir / "character.fch"
     temp_working = working_dir / ".character.fch.tmp"
     shutil.copy2(source, temp_working)
     verify_fch_round_trip(str(temp_working))
     os.replace(temp_working, working_path)
-
-    session = WorkspaceSession(
-        character_id=character_id,
-        character_name=character_name,
-        source_path=str(source),
-        workspace_dir=str(workspace_dir),
-        source_snapshot_path=str(snapshot_path),
-        working_path=str(working_path),
-        backups_dir=str(backups_dir),
-        metadata_path=str(workspace_dir / "metadata.json"),
-        opened_at=_utc_iso(),
-        opened_sha256=opened_hash,
-        expected_source_sha256=opened_hash,
-        expected_source_size=stat.st_size,
-        expected_source_mtime_ns=stat.st_mtime_ns,
-        working_sha256=file_sha256(working_path),
-        player_id=player_id if isinstance(player_id, int) else None,
-    )
-    session.persist()
-    return session
+    return working_path
 
 
 def store_verified_working_copy(

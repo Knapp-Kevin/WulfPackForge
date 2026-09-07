@@ -33,7 +33,8 @@ def build_ico(source: Path = SOURCE, target: Path = TARGET, size: int = ICO_SIZE
 
 
 def main() -> int:
-    app = QGuiApplication.instance() or QGuiApplication(sys.argv)  # noqa: F841 (Qt needs an application object)
+    app = QGuiApplication.instance() or QGuiApplication(sys.argv)  # Qt needs an application object for pixmaps
+    app.setApplicationName("Wulfpack Forge icon builder")
     return 0 if build_ico() else 1
 
 

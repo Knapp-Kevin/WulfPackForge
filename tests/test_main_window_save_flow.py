@@ -14,7 +14,7 @@ from subscripts.saveSafety import verify_fch_round_trip
 from tests.fixture_saves import realistic_player_data, realistic_root_save, write_fch
 from subscripts.playerDataUtil import pack_player_data_hex
 from ui import mainWindow as mw
-from ui.valheim_detection import ScanState, ValheimScan
+from subscripts.valheim_detection import ScanState, ValheimScan
 
 
 APP = QApplication.instance() or QApplication([])
@@ -22,6 +22,18 @@ APP = QApplication.instance() or QApplication([])
 
 class RecordingMessageBox:
     calls = []
+    Warning = 0
+    Ok = 0
+
+    def __init__(self, *args, **kwargs):
+        RecordingMessageBox.calls.append(("startup", "constructed"))
+
+    def setWindowTitle(self, *a): pass
+    def setText(self, *a): pass
+    def setInformativeText(self, *a): pass
+    def setIcon(self, *a): pass
+    def setStandardButtons(self, *a): pass
+    def exec(self): return 0
 
     @classmethod
     def information(cls, *args, **kwargs):
@@ -109,6 +121,46 @@ class MainWindowSaveFlowTests(unittest.TestCase):
         self.scan = ValheimScan(state=ScanState.NOT_RUNNING)
         self.window.save_save_file()
         self.assertEqual(verify_fch_round_trip(str(self.source))["character_name"], "Renamed")
+
+    def test_new_character_button_creates_and_opens_a_verified_file(self):
+        from subscripts.newCharacter import NewCharacterSpec
+
+        spec = NewCharacterSpec(name="Sigrun", directory=str(self.save_dir), model_index=1,
+                                hair="Hair7", beard="BeardNone",
+                                skin_color=[0.5, 0.5, 0.5], hair_color=[0.1, 0.2, 0.3])
+
+        class FakeDialog:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            def exec(self):
+                return 1
+
+            def result_spec(self):
+                return spec
+
+        with patch.object(mw, "NewCharacterDialog", FakeDialog):
+            self.window.create_new_character()
+
+        created = self.save_dir / "sigrun.fch"
+        self.assertTrue(created.is_file())
+        self.assertEqual(os.path.normcase(self.window.current_fch), os.path.normcase(str(created)))
+        self.assertEqual(self.window.save_status.state_label.text(), "Verified")
+        payload = unpack_player_data_hex(verify_fch_round_trip(str(created))["player_data_hex"])
+        self.assertEqual((payload["model_index"], payload["hair"], payload["beard"]), (1, "Hair7", "BeardNone"))
+        original = created.read_bytes()
+        self.window.save_save_file()
+        self.assertEqual(created.read_bytes(), original)
+
+    def test_smoke_mode_skips_startup_dialog_when_valheim_runs(self):
+        self.scan = ValheimScan(state=ScanState.RUNNING, process={"pid": 1, "name": "valheim.exe", "exe": None})
+        RecordingMessageBox.calls = []
+        quiet = mw.MainWindow(startup_warning=False)
+        self.assertNotIn(("startup", "constructed"), RecordingMessageBox.calls)
+        quiet.close()
+        loud = mw.MainWindow()
+        self.assertIn(("startup", "constructed"), RecordingMessageBox.calls)
+        loud.close()
 
     def test_unsupported_inner_version_is_read_only(self):
         payload = realistic_player_data()

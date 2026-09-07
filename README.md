@@ -40,7 +40,7 @@ The current build enables saving for character-save format versions 40 through 4
 
 The compact status card tells you whether the selected save is verified for editing, where the local copy came from, and whether Wulfpack Forge has a protected backup.
 
-![Wulfpack Forge main window showing a verified synthetic character, local Steam Cloud source, save version, catalog version, and workspace backup](docs/screenshots/main-status.png)
+![Wulfpack Forge main window showing a verified synthetic character, synthetic source, save version, catalog version, and workspace backup](docs/screenshots/main-status.png)
 
 Appearance controls use readable choices and color previews, so changing a model, hairstyle, beard, or color does not require save-format knowledge.
 
@@ -50,15 +50,26 @@ Inventory editing combines the familiar character grid with original item-catego
 
 ![Wulfpack Forge Inventory tab showing synthetic items and the categorised, searchable item picker with original glyph art](docs/screenshots/inventory.png)
 
+Known equipment is edited against its quality-based durability maximum, while untouched durability values are preserved exactly.
+
+![Wulfpack Forge item editor showing a synthetic Bronze Sword at quality 2 with durability expressed as a percentage of its maximum](docs/screenshots/item-editor.png)
+
 ## What Wulfpack Forge can edit
 
 | Area | Capabilities |
 |---|---|
-| Appearance | Skin color, shared hair/beard color, hair style, beard style, supported model settings, plus guarded HDR/overbright RGB editing from 0.0 through 10.0 |
-| Inventory | Categorised item picker with search and original tinted glyphs, raw prefab entry for modded items, stacks, durability, quality, variants, equipped state |
-| Skills | Supported Valheim skill levels |
+| Appearance | Skin color, shared hair/beard color, hair style, beard style, supported model settings, a live head preview that updates as you choose, plus guarded HDR/overbright RGB editing from 0.0 through 10.0 |
+| Inventory | Large illustrated grid with stack and quality badges, drag-and-drop to move or swap items, and an Equipped panel showing what occupies each slot; item picker organised by category, then type, then material (Weapons > Swords > Bronze) with counts, a breadcrumb, and clothing, accessories, and creature gear kept apart from armour; search, raw prefab entry for modded items; stacks, durability as a percent of the real maximum for the chosen quality, quality, styles where an item has them, and equipped state with the game's one-item-per-slot rule; remove an item with Remove from Inventory in the editor, the Delete key, or right-click |
+| Skills | Supported Valheim skill levels, including adding one or all vanilla skills the character does not have yet |
 | Stats | Supported health, stamina, progression, and related character values |
 | Character details | Supported character-level fields such as name |
+| New characters | Create a brand-new character (name, model, hair, beard, colours) with the game's starting defaults, then edit it like any other |
+
+### Creating a character
+
+**New Character** on the main window writes a fresh `.fch` file into the Valheim characters folder you choose, using the exact defaults the game writes for a new character (starting torch and rag tunic, no skills yet, first-spawn intro pending). The file is verified before it is placed, an existing character with the same name is never overwritten, and the new character opens in the editor immediately. Use the Skills tab's **Add Skill** or **Add All Skills** to give it vanilla skills.
+
+Compatibility status for created characters is **Compatibility unverified** until a character created by Wulfpack Forge has been loaded in Valheim as part of the release evidence; the file layout is byte-for-byte the layout of a character created in-game on the same build.
 
 Known vanilla items use human-readable names and an appropriate original silhouette while retaining their prefab IDs. Unknown, modded, or newer-version items are preserved and receive a neutral fallback glyph rather than being rejected simply because the bundled catalog does not recognize them.
 
@@ -74,7 +85,7 @@ The advanced controls are guarded rather than silently widening every color pick
 - **Presets preserve hue.** `Normal 1×`, `Bright 2×`, `Glow 4×`, and `Extreme 8×` rescale the selected skin, hair/beard, or both while retaining the original RGB proportions.
 - **Extreme values are called out.** Values above `4.0` show a stronger warning because they may bloom heavily, wash out the model, or render poorly in-game.
 - **Existing overbright characters are preserved.** If a loaded character already contains values above `1.0`, Wulfpack Forge enables the advanced surface automatically and round-trips those floats without clamping them back into the ordinary range.
-- **The preview is intentionally honest.** A normal desktop swatch cannot represent HDR intensity, so the swatch shows the hue while a separate label displays the actual stored peak intensity.
+- **The preview is intentionally honest.** A normal desktop swatch (and the head preview) cannot represent HDR intensity, so they show the hue while a separate label displays the actual stored peak intensity.
 
 Wulfpack Forge writes these appearance values as the same floating-point RGB fields already present in Valheim character data. The editor can preserve and write overbright values, but the final visual result still depends on how the current Valheim material/shader handles those values for skin, hair, and beard. The feature therefore describes the stored data accurately without promising that every value produces a particular amount of visible glow in every game build.
 
@@ -174,6 +185,8 @@ python tools/update_item_catalog.py --expected-version 0.221.12
 
 The generator refuses unexpected source-version drift and suspiciously small catalogs so a game update cannot silently rewrite the application data model.
 
+Item durability is maintained separately in `data/valheim_durability.json`. `tools/update_item_durability.py` builds that table from Valheim community wiki item pages, records only numeric durability facts, and preserves the source attribution in the generated file. For a known item and quality, Wulfpack Forge calculates the maximum as `base + per_level * (quality - 1)` and presents the saved durability as a percentage of that maximum. Unknown durability data stays on the raw-value path rather than being guessed.
+
 ## Running from source
 
 Source installation is intended for contributors, developers, and advanced users.
@@ -211,7 +224,8 @@ The repository uses PyInstaller to produce a self-contained Windows executable. 
 - installs application dependencies;
 - runs the automated test suite;
 - builds `WulfpackForge.exe`;
-- bundles the versioned item catalog, canonical Wulfpack Forge banner, and original inventory glyph masters;
+- bundles `data/valheim_items.json`, `data/valheim_durability.json`, the canonical banner, the Frostwulf application icon, 34 original inventory glyph masters, and the complete hair and beard thumbnail sets under `assets/glyphs/hair/` and `assets/glyphs/beard/`;
+- embeds `assets/wulfpack-forge.ico` as the Windows executable icon;
 - smoke-tests the packaged executable and required assets;
 - creates a Windows ZIP package;
 - generates SHA-256 checksums;
@@ -231,9 +245,16 @@ Automated coverage currently includes:
 - save-health and compatibility-state derivation;
 - item catalog generation and version drift;
 - catalog resolution and duplicate-name behavior;
+- item grouping by category, type, and material, plus equipment roles, slots, hand conflicts, and one-item-per-slot enforcement;
 - unknown/modded item preservation;
+- inventory drag-and-drop moves and swaps, equipment-panel refreshes, and item removal through the editor, Delete key, and inventory actions;
+- durability-page parsing, quality-based maximum calculations, percent editing, raw fallback, and exact preservation of untouched durability values;
 - inventory glyph mapping, fallback, tinting, decoding, and transparency;
+- live appearance-preview composition, beard-to-face fitting, preset anchoring, and non-mutating style and colour updates;
 - guarded HDR/overbright appearance controls, negative-value prevention, preset behavior, and unclamped round-trip preservation;
+- new-character construction, strict verification, calibrated defaults, collision refusal, and non-overwriting placement;
+- failure logging, rotating log-file setup, and graceful handling when the workspace log path is unavailable;
+- structural limits enforced by `tests/test_razor.py`: at most 250 lines per source file, 40 lines per function, and three control-flow nesting levels, with no star imports and no PySide6 imports outside `ui/`;
 - offscreen Qt widget behavior;
 - Wulfpack Forge branding identity and decodable runtime asset validation;
 - Python source compilation;
@@ -246,28 +267,62 @@ The durable product roadmap is [issue #2](https://github.com/Knapp-Kevin/WulfPac
 ```text
 ├── main.py
 ├── assets/
-│   └── wulfpack-forge-banner.jpg
+│   ├── FrostWulf-favicon.png
+│   ├── wulfpack-forge-banner.jpg
+│   ├── wulfpack-forge.ico
+│   └── glyphs/
+│       ├── items/
+│       ├── hair/
+│       └── beard/
 ├── data/
 │   ├── items.py
-│   └── valheim_items.json
-├── tools/
-│   └── update_item_catalog.py
+│   ├── item_groups.py
+│   ├── equipment.py
+│   ├── glyphs.py
+│   ├── appearance.py
+│   ├── durability.py
+│   ├── skills.py
+│   ├── powers.py
+│   ├── valheim_items.json
+│   └── valheim_durability.json
 ├── subscripts/
-│   ├── characterDiscovery.py
+│   ├── binaryIO.py
 │   ├── fchUtil.py
 │   ├── playerDataUtil.py
-│   ├── saveHealth.py
 │   ├── saveSafety.py
-│   └── workspace.py
+│   ├── saveHealth.py
+│   ├── workspace.py
+│   ├── saveFlow.py
+│   ├── saveErrors.py
+│   ├── characterDiscovery.py
+│   ├── valheim_detection.py
+│   ├── newCharacter.py
+│   └── logSetup.py
+├── tools/
+│   ├── update_item_catalog.py
+│   ├── update_item_durability.py
+│   └── make_app_icon.py
 ├── ui/
-│   ├── branding.py
 │   ├── mainWindow.py
+│   ├── characterPicker.py
+│   ├── brandBanner.py
+│   ├── messages.py
 │   ├── saveStatusWidget.py
 │   ├── appearanceTab.py
+│   ├── appearancePreview.py
+│   ├── hdrColorControls.py
+│   ├── newCharacterDialog.py
 │   ├── inventoryTab.py
+│   ├── inventorySlot.py
+│   ├── itemPickerDialog.py
+│   ├── itemEditDialog.py
+│   ├── equipmentPanel.py
 │   ├── skillsTab.py
 │   ├── statsTab.py
-│   └── miscTab.py
+│   ├── miscTab.py
+│   ├── glyphs.py
+│   ├── branding.py
+│   └── fieldTracker.py
 ├── tests/
 └── .github/workflows/
 ```

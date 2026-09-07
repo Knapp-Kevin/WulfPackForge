@@ -5,6 +5,7 @@ from typing import Dict, Optional, Tuple, Union
 from PySide6.QtCore import QRectF, Qt
 from PySide6.QtGui import QColor, QFont, QIcon, QImageReader, QPainter, QPixmap
 
+from data.appearance import VALHEIM_BEARDS, VALHEIM_HAIRS
 from data.glyphs import GLYPH_IDS, GLYPH_MASTER_DIR, TINTS, glyph_for
 from data.items import ItemDefinition, resolve_item
 from ui.branding import resource_path
@@ -17,8 +18,37 @@ def clear_cache() -> None:
     _CACHE.clear()
 
 
+def glyph_root() -> Path:
+    return resource_path("assets/glyphs")
+
+
 def master_dir() -> Path:
     return resource_path(GLYPH_MASTER_DIR)
+
+
+def appearance_pixmap(kind: str, key: str, size: int = 48) -> QPixmap:
+    """Thumbnail for a hair or beard entry, or a null pixmap when no art exists."""
+    cache_key = (f"{kind}:{key}", "none", size)
+    cached = _CACHE.get(cache_key)
+    if cached is not None:
+        return cached
+    path = glyph_root() / kind / f"{key}.png"
+    pixmap = QPixmap(str(path)) if path.is_file() else QPixmap()
+    if not pixmap.isNull():
+        pixmap = pixmap.scaled(size, size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+    _CACHE[cache_key] = pixmap
+    return pixmap
+
+
+def populate_appearance_combo(combo, table: Dict[str, str], kind: str) -> None:
+    """Fill a combo with ``{key: label}`` entries, attaching thumbnails where art exists."""
+    combo.clear()
+    for key, label in table.items():
+        pixmap = appearance_pixmap(kind, key)
+        if pixmap.isNull():
+            combo.addItem(label, key)
+        else:
+            combo.addItem(QIcon(pixmap), label, key)
 
 
 def tint_pixmap(pixmap: QPixmap, color: QColor) -> QPixmap:
@@ -88,7 +118,7 @@ def item_icon(target: Union[str, ItemDefinition], size: int = 64) -> QIcon:
 
 def glyph_bundle_is_usable() -> bool:
     """Check objective runtime requirements without pretending CI can judge art."""
-    if len(GLYPH_IDS) != 23 or len(set(GLYPH_IDS)) != 23:
+    if not GLYPH_IDS or len(set(GLYPH_IDS)) != len(GLYPH_IDS):
         return False
 
     for glyph_id in GLYPH_IDS:
@@ -106,4 +136,18 @@ def glyph_bundle_is_usable() -> bool:
             or not image.hasAlphaChannel()
         ):
             return False
+    return True
+
+
+def appearance_bundle_is_usable() -> bool:
+    """Verify every catalog hair and beard thumbnail is present and decodable."""
+    catalogs = (("hair", VALHEIM_HAIRS), ("beard", VALHEIM_BEARDS))
+    for kind, entries in catalogs:
+        for key in entries:
+            reader = QImageReader(str(glyph_root() / kind / f"{key}.png"))
+            if not reader.canRead():
+                return False
+            image = reader.read()
+            if image.isNull() or image.size().width() != 512 or image.size().height() != 512:
+                return False
     return True

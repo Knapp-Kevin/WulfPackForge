@@ -57,6 +57,21 @@ class ItemEditDialogTests(unittest.TestCase):
         self.assertIn("Chest", dialog.catalog_status.text())
         dialog.close()
 
+    def test_variant_row_only_for_items_with_styles_or_unknown(self):
+        arrow = ItemEditDialog(item_data("ArrowWood", variant=0))
+        self.assertTrue(arrow.variant_input.isHidden())
+        self.assertEqual(arrow.get_updated_data()["variant"], 0)
+        arrow.close()
+        shield = ItemEditDialog(item_data("ShieldWood", variant=3))
+        self.assertFalse(shield.variant_input.isHidden())
+        self.assertEqual(shield.variant_input.maximum(), 7)
+        self.assertEqual(shield.get_updated_data()["variant"], 3)
+        shield.close()
+        modded = ItemEditDialog(item_data("MyModdedLegendaryHammer", variant=5))
+        self.assertFalse(modded.variant_input.isHidden())
+        self.assertEqual(modded.get_updated_data()["variant"], 5)
+        modded.close()
+
     def test_catalog_completion_normalizes_to_prefab(self):
         dialog = ItemEditDialog(item_data("ArrowWood"))
         dialog._completion_selected("Bronze Sword — SwordBronze")

@@ -2,8 +2,8 @@
 
 ## Implementation status
 
-- **Complete:** all 23 inventory glyph masters are approved, bundled under `assets/glyphs/items/`, mapped in `data/glyphs.py`, and rendered with material tinting in the Inventory grid and item editor.
-- **Backlog:** 38 hairstyle thumbnails and 27 beard thumbnails. The current Appearance tab remains text-and-color based until those original assets and their UI integration receive a separate review.
+- **Complete:** all 34 inventory glyph masters are approved, bundled under `assets/glyphs/items/`, mapped in `data/glyphs.py`, and rendered with material tinting in the Inventory grid and item editor.
+- **Complete:** all 38 hairstyle and 27 beard thumbnails are bundled under `assets/glyphs/hair/` and `assets/glyphs/beard/`. The Appearance tab and New Character dialog load them automatically by catalog id.
 
 Lists every original image the bundled glyph set needs so the batch can be generated in one pass. Nothing here derives from Iron Gate art; each glyph depicts the concept, in one consistent house style, and is keyed on data the item catalog already carries (`item_type`) plus a material tint inferred from the prefab name. See `docs/BRAND_GUIDE.md` for the product palette this extends.
 
@@ -17,7 +17,7 @@ silhouette must stay readable at 32 pixels. Norse-fantasy character editor style
 not photorealistic, not pixel art. Original design, not based on any existing game's art.
 ```
 
-Generate the 23 item masters in grey; the app applies the material tint at load time. For hair and beard thumbnails use the second template below.
+Generate item masters in grey; the app applies the material tint at load time. For hair and beard thumbnails use the second template below.
 
 ```
 Flat vector schematic head-and-shoulders silhouette, front view, neutral face with no features, showing
@@ -72,28 +72,117 @@ original design.
 | G20 ingot | material bar or lump | Material | 215 |
 | G21 food | bowl or cooked item | Consumable, Fish | 116 |
 | G22 trophy | mounted head plaque | Trophy | 60 |
-| G23 torch | torch | Torch, Misc | 27 |
+| G23 torch | torch | Torch | 4 |
+
+## Round 2 item silhouettes (11), complete
+
+Bundled under `assets/glyphs/items/`, resolved by `data/glyphs.py`, and rendered with the same runtime material tinting as the first 23 masters.
+
+| glyph id | depicts | prefabs |
+|---|---|---|
+| G24_bomb | round clay bomb with a short fuse | Bomb* (ooze, bile, smoke, blob, lava) |
+| G25_pickaxe | pickaxe head on a handle | Pickaxe* |
+| G26_hammer | one-handed building hammer | Hammer; Tool default |
+| G27_hoe | hoe or cultivator, long handle | Hoe, Cultivator |
+| G28_key | old iron key | CryptKey, DvergrKey, HildirKey_* |
+| G29_egg | single egg | DragonEgg, ChickenEgg, AsksvinEgg, VoltureEgg |
+| G30_misc | tied sack or bundle | Misc default: saddles, bell, barber kit, chests, serving tray |
+| G31_tankard | drinking horn or tankard | Tankard* |
+| G32_fishing | fishing rod with line, small bait tin | FishingRod, FishingBait* |
+| G33_fist | clawed fist weapon | Fist* |
+| G34_scythe | scythe | Scythe |
 
 Customization (109) is not an inventory surface and needs no glyph. Modded prefabs with no catalog row fall back to G20 with the slate tint.
 
-Batch size: 23 silhouettes x 8 tints = 184 renders, produced by tinting one master per silhouette in code, so the generation task is 23 images.
+The 34 masters cover both item rounds. Each is tinted in code, avoiding separate rendered files for every material.
 
 ## Hairstyle thumbnails (38)
 
-One original schematic head-and-shoulders silhouette per entry in `data/hairs.py`, same style, hair mass drawn from the entry's name (Windswept, High Ponytail, Pigtails, Low Ponytail, Short, Long and Loose, Dragonslayer, Parted, Old One-Eye, Side Swept, Long Braid, Matronly, Twin Braids, Speed Demon, Pulled Back Curls, Gathered Braids, Neat Braids, Royal Braids, Painter Curls, Tidy Curls, Twin Buns, Single Bun, Short Curls, Shaved and Braided, Knot, Short Locs, Braids of Strength, Merchant's Braid, Tucked Back, Loose Waves, Gathered Locs, Mullet, Vinland Shave, Castellan, Champion, Chronicler, Sunbringer) plus "No Hair". Hair colour is applied in the app from the save's hair_color.
+One original schematic head-and-shoulders silhouette per catalog hairstyle, same house style, saved as `assets/glyphs/hair/<id>.png`. Hair colour is applied in the app from the save's hair_color, so generate in mid-grey. Accuracy rule: the silhouette must match the in-game style's shape (length, braids, buns, parting, shaved sides), not just the name. The maintainer holds a private reference sheet rendered from the game's own meshes for the styles marked "mesh reference available"; the rest are generated from the name and in-game knowledge.
+
+| id | name | reference |
+|---|---|---|
+| HairNone | No Hair | name only |
+| Hair27 | Braids of Strength | mesh reference available |
+| Hair34 | Castellan | name only |
+| Hair35 | Champion | name only |
+| Hair36 | Chronicler | name only |
+| Hair7 | Dragonslayer | name only |
+| Hair16 | Gathered Braids | mesh reference available |
+| Hair31 | Gathered Locs | mesh reference available |
+| Hair2 | High Ponytail | name only |
+| Hair25 | Knot | mesh reference available |
+| Hair6 | Long and Loose | mesh reference available |
+| Hair11 | Long Braid | mesh reference available |
+| Hair30 | Loose Waves | mesh reference available |
+| Hair4 | Low Ponytail | mesh reference available |
+| Hair12 | Matronly | mesh reference available |
+| Hair28 | Merchant's Braid | mesh reference available |
+| Hair32 | Mullet | name only |
+| Hair17 | Neat Braids | mesh reference available |
+| Hair9 | Old One-Eye | mesh reference available |
+| Hair19 | Painter Curls | mesh reference available |
+| Hair8 | Parted | mesh reference available |
+| Hair3 | Pigtails | mesh reference available |
+| Hair15 | Pulled Back Curls | mesh reference available |
+| Hair18 | Royal Braids | mesh reference available |
+| Hair24 | Shaved and Braided | mesh reference available |
+| Hair5 | Short | mesh reference available |
+| Hair23 | Short Curls | mesh reference available |
+| Hair26 | Short Locs | mesh reference available |
+| Hair10 | Side Swept | mesh reference available |
+| Hair22 | Single Bun | mesh reference available |
+| Hair14 | Speed Demon | mesh reference available |
+| Hair37 | Sunbringer | name only |
+| Hair20 | Tidy Curls | mesh reference available |
+| Hair29 | Tucked Back | mesh reference available |
+| Hair13 | Twin Braids | mesh reference available |
+| Hair21 | Twin Buns | mesh reference available |
+| Hair33 | Vinland Shave | name only |
+| Hair1 | Windswept | mesh reference available |
 
 ## Beard thumbnails (27)
 
-One silhouette per entry in `data/beards.py` (22 named styles plus "No beard"), and four placeholders for `Beard17`-`Beard20`, which real saves use but the table does not yet name (BACKLOG OQ1).
+One silhouette per catalog beard, saved as `assets/glyphs/beard/<id>.png`. Beard shapes in the game are carried mostly by textures, so the mesh renders are not a useful reference; generate from the names with the following shape hints: Majestic (full, long, squared), Twin Braids (two braids from the chin), Short (close-cropped full beard), Straight (medium full beard combed straight down), Single Braid (one central chin braid), Loose Braid (loose chin braid), Split Shave (beard split down the middle), Thick (dense full beard), Trobadour (goatee with mustache), Top Braid (braid across the upper lip line), Facewarmer (very long full beard), Royal (long, groomed, pointed), Triplets (three braids), Split Braid (forked braid), Mini Braid (short single braid), Stonedweller (broad dwarf-style beard), Neat (short trimmed full beard), Jarl Braids (long with multiple ornamented braids), Bushy (wild full beard), Spiky (short beard with spiked chin), Tidy (neat short goatee), Mustache (mustache only), Crumb Catcher (mustache with small chin patch), Waxed (waxed handlebar mustache), Trimmed (stubble-length beard), Handlebar (handlebar mustache with short beard).
+
+| id | name |
+|---|---|
+| BeardNone | No Beard |
+| Beard19 | Bushy |
+| Beard23 | Crumb Catcher |
+| Beard11 | Facewarmer |
+| Beard26 | Handlebar |
+| Beard18 | Jarl Braids |
+| Beard6 | Loose Braid |
+| Beard1 | Majestic |
+| Beard15 | Mini Braid |
+| Beard22 | Mustache |
+| Beard17 | Neat |
+| Beard12 | Royal |
+| Beard3 | Short |
+| Beard5 | Single Braid |
+| Beard20 | Spiky |
+| Beard14 | Split Braid |
+| Beard7 | Split Shave |
+| Beard16 | Stonedweller |
+| Beard4 | Straight |
+| Beard8 | Thick |
+| Beard21 | Tidy |
+| Beard10 | Top Braid |
+| Beard25 | Trimmed |
+| Beard13 | Triplets |
+| Beard9 | Trobadour |
+| Beard2 | Twin Braids |
+| Beard24 | Waxed |
 
 ## Output manifest
 
 Approved files move to `assets/glyphs/` as original bundled art. Work in progress stays outside the runtime asset tree:
 
 ```
-assets/glyphs/items/G01_sword.png ... G23_torch.png   (masters, 512x512, untinted grey)
-assets/glyphs/hair/Hair1.png ... Hair37.png, nohair.png
-assets/glyphs/beard/Beard1.png ... Beard26.png, nobeard.png
+assets/glyphs/items/G01_sword.png ... G34_scythe.png   (masters, 512x512, untinted grey)
+assets/glyphs/hair/Hair1.png ... Hair37.png, HairNone.png
+assets/glyphs/beard/Beard1.png ... Beard26.png, BeardNone.png
 ```
 
-The app maps prefab -> (glyph, tint) with a small rules table in `data/glyphs.py` and tints at load time. The inventory masters are complete; the hair and beard paths above are reserved for the remaining appearance-art tranche.
+The app maps prefab -> (glyph, tint) with a small rules table in `data/glyphs.py` and tints at load time. The complete hair and beard sets are picked up automatically from the paths above.

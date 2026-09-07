@@ -16,7 +16,9 @@ GLYPH_IDS = (
     "G06_greatsword", "G07_battleaxe", "G08_polearm", "G09_sledge",
     "G10_staff", "G11_bow", "G12_crossbow", "G13_arrow", "G14_shield",
     "G15_helmet", "G16_chest", "G17_legs", "G18_cape", "G19_trinket",
-    "G20_ingot", "G21_food", "G22_trophy", "G23_torch",
+    "G20_ingot", "G21_food", "G22_trophy", "G23_torch", "G24_bomb",
+    "G25_pickaxe", "G26_hammer", "G27_hoe", "G28_key", "G29_egg", "G30_misc",
+    "G31_tankard", "G32_fishing", "G33_fist", "G34_scythe",
 )
 
 TINTS = {
@@ -45,13 +47,23 @@ TINT_TOKENS = (
     ("wood", "wood"), ("yggdrasil", "wood"), ("root", "wood"), ("bow", "wood"),
 )
 
+# Masters not yet in the bundle: resolved by the same rules, drawn as placeholders until
+# their PNGs land under assets/glyphs/items/ and the id moves into GLYPH_IDS.
+PENDING_GLYPH_IDS = ()
+
 # Prefab-prefix refinements inside a type; checked before the type default.
 _PREFIX_GLYPHS = (
     ("sword", "G01_sword"), ("axe", "G02_axe"), ("battleaxe", "G07_battleaxe"),
     ("mace", "G03_mace"), ("club", "G03_mace"), ("sledge", "G09_sledge"),
     ("knife", "G04_knife"), ("spear", "G05_spear"), ("atgeir", "G08_polearm"),
     ("staff", "G10_staff"), ("crossbow", "G12_crossbow"), ("bow", "G11_bow"),
+    ("bomb", "G24_bomb"), ("pickaxe", "G25_pickaxe"), ("hammer", "G26_hammer"),
+    ("hoe", "G27_hoe"), ("cultivator", "G27_hoe"), ("tankard", "G31_tankard"),
+    ("fishingrod", "G32_fishing"), ("fishingbait", "G32_fishing"), ("fist", "G33_fist"),
+    ("scythe", "G34_scythe"), ("thsword", "G06_greatsword"), ("feaster", "G30_misc"),
 )
+# Substring rules for non-weapon families (keys, eggs, misc props).
+_CONTAINS_GLYPHS = (("key", "G28_key"), ("egg", "G29_egg"))
 
 GLYPH_BY_TYPE = {
     "OneHandedWeapon": "G01_sword",
@@ -72,9 +84,10 @@ GLYPH_BY_TYPE = {
     "Fish": "G21_food",
     "Trophy": "G22_trophy",
     "Torch": "G23_torch",
-    "Misc": "G23_torch",
-    "Tool": "G02_axe",
+    "Misc": "G30_misc",
+    "Tool": "G26_hammer",
 }
+_PREFIX_TYPES = frozenset({"OneHandedWeapon", "TwoHandedWeapon", "TwoHandedWeaponLeft", "Bow", "Tool", "Ammo", "AmmoNonEquipable"})
 
 
 def tint_for(prefab: str) -> str:
@@ -87,10 +100,16 @@ def tint_for(prefab: str) -> str:
 
 def _glyph_for_prefix(prefab: str, item_type: Optional[str]) -> Optional[str]:
     lowered = prefab.lower()
-    if item_type in {"OneHandedWeapon", "TwoHandedWeapon", "TwoHandedWeaponLeft", "Bow", "Tool"}:
+    if item_type in _PREFIX_TYPES:
         # Longer prefixes first so "battleaxe" beats "axe" and "crossbow" beats "bow".
         for prefix, glyph in sorted(_PREFIX_GLYPHS, key=lambda pair: -len(pair[0])):
             if lowered.startswith(prefix):
+                return glyph
+        if lowered.startswith("fishingbait"):
+            return "G32_fishing"
+    if item_type == "Misc":
+        for token, glyph in _CONTAINS_GLYPHS:
+            if token in lowered:
                 return glyph
     return None
 

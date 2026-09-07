@@ -137,6 +137,35 @@ def _write_appearance(pkg: BinaryWriter, data: dict) -> None:
     pkg.write_int32(data["model_index"])
 
 
+def _write_knowledge(pkg: BinaryWriter, data: dict) -> None:
+    _write_string_list(pkg, data["known_recipes"])
+    pkg.write_int32(len(data["known_stations"]))
+    for key, value in data["known_stations"].items():
+        pkg.write_string(key)
+        pkg.write_int32(value)
+    _write_string_list(pkg, data["known_material"])
+    _write_string_list(pkg, data["shown_tutorials"])
+    _write_string_list(pkg, data["uniques"])
+    _write_string_list(pkg, data["trophies"])
+    pkg.write_int32(len(data["known_biomes"]))
+    for biome in data["known_biomes"]:
+        pkg.write_int32(biome)
+    _write_string_dict(pkg, data["known_texts"])
+
+
+def _write_progress(pkg: BinaryWriter, data: dict) -> None:
+    pkg.write_int32(len(data["foods"]))
+    for food in data["foods"]:
+        pkg.write_string(food["name"])
+        pkg.write_float(food["time"])
+    pkg.write_int32(data["skill_version"])
+    pkg.write_int32(len(data["skills"]))
+    for skill in data["skills"]:
+        pkg.write_int32(skill["id"])
+        pkg.write_float(skill["level"])
+        pkg.write_float(skill["xp"])
+
+
 def pack_player_data_hex(data: dict) -> str:
     """Serialize the player payload dictionary back into a hex string."""
     pkg = BinaryWriter()
@@ -151,30 +180,9 @@ def pack_player_data_hex(data: dict) -> str:
     pkg.write_int32(len(data["inventory"]))
     for item in data["inventory"]:
         _write_item(pkg, item)
-    _write_string_list(pkg, data["known_recipes"])
-    pkg.write_int32(len(data["known_stations"]))
-    for key, value in data["known_stations"].items():
-        pkg.write_string(key)
-        pkg.write_int32(value)
-    _write_string_list(pkg, data["known_material"])
-    _write_string_list(pkg, data["shown_tutorials"])
-    _write_string_list(pkg, data["uniques"])
-    _write_string_list(pkg, data["trophies"])
-    pkg.write_int32(len(data["known_biomes"]))
-    for biome in data["known_biomes"]:
-        pkg.write_int32(biome)
-    _write_string_dict(pkg, data["known_texts"])
+    _write_knowledge(pkg, data)
     _write_appearance(pkg, data)
-    pkg.write_int32(len(data["foods"]))
-    for food in data["foods"]:
-        pkg.write_string(food["name"])
-        pkg.write_float(food["time"])
-    pkg.write_int32(data["skill_version"])
-    pkg.write_int32(len(data["skills"]))
-    for skill in data["skills"]:
-        pkg.write_int32(skill["id"])
-        pkg.write_float(skill["level"])
-        pkg.write_float(skill["xp"])
+    _write_progress(pkg, data)
     _write_string_dict(pkg, data["custom_data"])
     pkg.write_float(data["stamina"])
     pkg.write_float(data["max_eitr"])
