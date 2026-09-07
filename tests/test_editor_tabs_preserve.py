@@ -168,6 +168,24 @@ class AppearanceTabPreserveTests(unittest.TestCase):
         self.assertTrue(loaded_hdr.hdr_controls.isVisibleTo(loaded_hdr))
         self.assertFalse(loaded_hdr.btn_hair_color.isVisibleTo(loaded_hdr))
 
+    def test_presets_anchor_to_the_picked_colour(self):
+        data = loaded_player_data()
+        data["skin_color"] = [0.8, 0.6, 0.4]
+        data["hair_color"] = [1.0, 2.0, 4.0]
+        tab = AppearanceTab()
+        tab.load_data(data)
+        tab.overbright_checkbox.setChecked(True)
+        tab.preset_target_combo.setCurrentIndex(tab.preset_target_combo.findData("skin"))
+        seen = []
+        for intensity in (2.0, 8.0, 2.0, 1.0):
+            tab.apply_intensity_preset(intensity)
+            seen.append([round(v, 6) for v in tab.current_skin_rgb])
+        self.assertEqual(seen, [[1.6, 1.2, 0.8], [6.4, 4.8, 3.2], [1.6, 1.2, 0.8], [0.8, 0.6, 0.4]])
+
+        tab.preset_target_combo.setCurrentIndex(tab.preset_target_combo.findData("hair"))
+        tab.apply_intensity_preset(1.0)
+        self.assertEqual([round(v, 6) for v in tab.current_hair_rgb], [0.25, 0.5, 1.0])
+
     def test_hdr_controls_are_opt_in_and_negative_values_are_prohibited(self):
         tab = AppearanceTab()
         data = loaded_player_data()

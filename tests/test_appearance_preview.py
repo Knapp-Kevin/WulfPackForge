@@ -9,7 +9,7 @@ from PySide6.QtWidgets import QApplication
 
 from subscripts.playerDataUtil import unpack_player_data_hex
 from tests.fixture_saves import realistic_player_hex
-from ui.appearancePreview import compose_preview
+from ui.appearancePreview import beard_transform, compose_preview
 from ui.appearanceTab import AppearanceTab
 
 
@@ -44,6 +44,14 @@ class AppearancePreviewTests(unittest.TestCase):
         self.assertIsNotNone(skin, "no skin-coloured pixel found")
         self.assertLess(_distance(image.pixelColor(*blue), HAIR), _distance(image.pixelColor(*blue), SKIN))
         self.assertLess(_distance(image.pixelColor(*skin), SKIN), _distance(image.pixelColor(*skin), HAIR))
+
+    def test_beard_is_fitted_to_the_hair_images_shoulders(self):
+        scale, dx, dy = beard_transform("Hair7", "Beard3", 256)
+        self.assertTrue(0.85 < scale < 1.0, scale)
+        self.assertGreater(dy, 10.0)
+        pixmap = compose_preview("Hair7", "Beard3", SKIN, HAIR, 0, 256)
+        self.assertEqual((pixmap.width(), pixmap.height()), (256, 256))
+        self.assertEqual(beard_transform("Hair7", "BeardNone", 256)[0], 1.0)
 
     def test_female_model_has_no_beard_and_matches_beardnone(self):
         bearded = compose_preview("Hair7", "Beard3", SKIN, HAIR, 0, 256).toImage()

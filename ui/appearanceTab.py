@@ -32,14 +32,16 @@ def _intensity(rgb_list) -> float:
     return max((float(component) for component in rgb_list[:3]), default=0.0)
 
 
-def _normalised_with_intensity(rgb_list, intensity: float) -> list:
-    """Preserve hue while setting the brightest component to ``intensity``."""
+def _sdr_base(rgb_list) -> list:
+    """The colour as it would be picked in SDR: unchanged when its peak is at most 1.0, else divided by the peak."""
     safe = [max(0.0, float(component)) for component in rgb_list[:3]]
     peak = max(safe, default=0.0)
-    if peak <= 0.0:
-        return [0.0, 0.0, 0.0]
-    scale = intensity / peak
-    return [min(MAX_HDR_COMPONENT, component * scale) for component in safe]
+    return safe if peak <= 1.0 else [component / peak for component in safe]
+
+
+def _scaled_from_base(base, intensity: float) -> list:
+    """``intensity`` times the SDR base, clamped to the HDR ceiling; 1.0 restores the base exactly."""
+    return [min(MAX_HDR_COMPONENT, component * intensity) for component in base]
 
 
 class AppearanceTab(QWidget):
@@ -116,6 +118,8 @@ class AppearanceTab(QWidget):
 
         self.current_skin_rgb = [1.0, 1.0, 1.0]
         self.current_hair_rgb = [1.0, 1.0, 1.0]
+        self._sdr_skin = [1.0, 1.0, 1.0]
+        self._sdr_hair = [1.0, 1.0, 1.0]
 
         self.btn_skin_color.clicked.connect(self.choose_skin_color)
         self.btn_hair_color.clicked.connect(self.choose_hair_color)
@@ -264,9 +268,9 @@ class AppearanceTab(QWidget):
             return
         target = self.preset_target_combo.currentData()
         if target in ("skin", "both"):
-            self.current_skin_rgb = _normalised_with_intensity(self.current_skin_rgb, intensity)
+            self.current_skin_rgb = _scaled_from_base(self._sdr_skin, intensity)
         if target in ("hair", "both"):
-            self.current_hair_rgb = _normalised_with_intensity(self.current_hair_rgb, intensity)
+            self.current_hair_rgb = _scaled_from_base(self._sdr_hair, intensity)
         self._sync_hdr_spins()
         self._refresh_color_ui()
 
@@ -296,6 +300,8 @@ class AppearanceTab(QWidget):
 
         self.current_skin_rgb = self._sanitise_loaded_color(self.player_data.get("skin_color", [1.0, 1.0, 1.0]))
         self.current_hair_rgb = self._sanitise_loaded_color(self.player_data.get("hair_color", [1.0, 1.0, 1.0]))
+        self._sdr_skin = _sdr_base(self.current_skin_rgb)
+        self._sdr_hair = _sdr_base(self.current_hair_rgb)
         has_existing_overbright = max(_intensity(self.current_skin_rgb), _intensity(self.current_hair_rgb)) > 1.0
         self.overbright_checkbox.setChecked(has_existing_overbright)
         self._sync_hdr_spins()
@@ -316,6 +322,7 @@ class AppearanceTab(QWidget):
         color = QColorDialog.getColor(_to_qcolor(self.current_skin_rgb), self, "Select Skin Color")
         if color.isValid():
             self.current_skin_rgb = [color.red() / 255.0, color.green() / 255.0, color.blue() / 255.0]
+            self._sdr_skin = list(self.current_skin_rgb)
             self._sync_hdr_spins()
             self._refresh_color_ui()
 
@@ -323,6 +330,7 @@ class AppearanceTab(QWidget):
         color = QColorDialog.getColor(_to_qcolor(self.current_hair_rgb), self, "Select Hair/Beard Color")
         if color.isValid():
             self.current_hair_rgb = [color.red() / 255.0, color.green() / 255.0, color.blue() / 255.0]
+            self._sdr_hair = list(self.current_hair_rgb)
             self._sync_hdr_spins()
             self._refresh_color_ui()
 

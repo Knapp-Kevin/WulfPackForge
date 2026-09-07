@@ -7,6 +7,8 @@ The project is currently evolving toward its first branded Wulfpack Forge releas
 ## Unreleased
 
 ### Fixed
+- HDR intensity presets now scale the colour you picked (Normal 1× restores it exactly, Bright 2× doubles it) instead of re-anchoring to a peak of 1.0, so clicking presets in any order never drifts.
+- Beards and moustaches in the head preview are fitted to the face: the beard art is scaled and shifted to the hair image's shoulders instead of being centred, which had left them sitting high.
 - The banner now scales with the window: the whole image stays visible at every width, its height follows the image's proportions (between 90 and 260 px), and it renders sharply on high-DPI displays instead of showing a cropped horizontal slice that jumped on resize.
 - The item picker only offers things a character can actually carry. Creature attacks (troll log swings, draugr and skeleton weapons, charred greatswords, brute taunts) and internal cheat items no longer appear in any category or search result; the Advanced raw-prefab entry remains for deliberate use.
 - Named weapons without a material in their prefab name (Splitnir and its Bleeding, Storming, and Primal variants, Mistwalker, Krom, Nidhögg, Slayer, Ripper, Dyrnwyn, and the rest) now sit under their crafting tier in the picker, such as Weapons › Spears › Flametal. Any type that still has unranked items shows an "Other" branch, so nothing is reachable only from the type node.
