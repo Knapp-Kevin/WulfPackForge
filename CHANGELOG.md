@@ -20,6 +20,7 @@ The project is currently evolving toward its first branded Wulfpack Forge releas
 - `--smoke-test` no longer blocks on the "Valheim Running" dialog when the game happens to be open on the machine running the check.
 
 ### Added
+- **Character records.** The character list groups every copy of a character (active save, Valheim's `.fch.old` and backup files, Wulfpack Forge snapshots and backups) under one entry by the identity inside the save. **States…** shows them with kind, location, time, version, and status; a state can be opened or restored as the active save, and a restore goes through the normal Save Changes path with its guard, backup, and atomic replace. The workspace is now keyed by that identity, so a backup opened as a file no longer creates a second workspace. A scan cache keeps repeat discovery cheap.
 - A rotating log file under the Wulfpack Forge workspace root (`logs/wulfpack-forge.log`, 1 MB with three backups) so failures to open or save a character leave a trace that can be attached to a bug report.
 - Guarded **Advanced HDR / Overbright Colors** controls for skin and shared hair/beard color floats, with explicit opt-in before entering values above 1.0 (from PR #16).
 - RGB float controls from `0.0` through `10.0`; negative/underbright values are prohibited at the widget boundary.

@@ -60,6 +60,10 @@ Three-state process scan (running, not running, inconclusive) built on psutil. I
 
 Filesystem helpers for Save Changes: staging the verified working copy beside the destination, quiet (but logged) temp-file removal, and external-change detection on error text.
 
+### `subscripts/characterRecords.py`
+
+Groups every save-like file (game folders: `*.fch`, `*.fch.old`, `_backup` copies; workspace: snapshots, working copy, backups) into one record per character identity `(player_id, date_created_unix)`. States are typed and sorted newest first; the head is the active save. A size-and-mtime cache under `<workspace root>/index/` keeps rescans cheap. Restoring a state is a pending edit for the head, applied by the ordinary Save Changes path.
+
 ### `subscripts/characterDiscovery.py`
 
 Finds `.fch` files in supported local Valheim directories and Steam userdata locations.
@@ -112,7 +116,7 @@ characters/active/<character-id>/
 └── metadata.json
 ```
 
-When a character is opened, the source must pass strict verification before the workspace is created. The workspace records an immutable source snapshot, a verified working copy, and the expected SHA-256 of the active source. The source snapshot is not edited during the session.
+The workspace directory is keyed by the character's identity (`player_id` and creation stamp), so every copy of a character shares one workspace. When a character is opened, the source must pass strict verification before the workspace is created. The workspace records an immutable source snapshot, a verified working copy, and the expected SHA-256 of the active source. The source snapshot is not edited during the session.
 
 The workspace is deliberately outside Valheim's save tree so Wulfpack Forge's own history is not mistaken for active game state or synchronized by Steam as additional characters.
 

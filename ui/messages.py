@@ -12,6 +12,12 @@ SAVE_BUTTON_TIP = (
 )
 
 
+def restoring(state_path: str, head_path: str) -> str:
+    import os
+    return (f"Restoring {os.path.basename(state_path)} into {os.path.basename(head_path)}. "
+            "Nothing is written yet; click Save Changes to apply it with a backup.")
+
+
 def could_not_open(exc) -> str:
     return ("This save was not loaded because it could not be verified, parsed, and protected safely."
             f"\n\n{exc}")

@@ -1,4 +1,5 @@
 import os
+import os
 import tempfile
 import unittest
 from contextlib import ExitStack
@@ -62,7 +63,7 @@ class MainWindowSaveFlowTests(unittest.TestCase):
 
         self.stack = ExitStack()
         self.stack.enter_context(patch.object(mw, "scan_valheim", side_effect=lambda: self.scan))
-        self.stack.enter_context(patch.object(mw, "discover_character_saves", return_value=[]))
+        self.stack.enter_context(patch.object(mw, "discover_character_records", return_value=[]))
         self.stack.enter_context(patch.object(mw, "QMessageBox", RecordingMessageBox))
         self.stack.enter_context(
             patch("subscripts.workspace.default_workspace_root", return_value=self.workspace_root)
@@ -92,6 +93,19 @@ class MainWindowSaveFlowTests(unittest.TestCase):
             self.assertEqual(written[key], opened[key], key)
         self.assertEqual(written_root.get("used_cheats"), opened_cheats)
         self.assertEqual(written_root["character_name"], "Renamed")
+
+    def test_restore_state_applies_through_the_verified_save_path(self):
+        older = realistic_root_save(name="Older")
+        backup = write_fch(self.save_dir / "hero_backup_auto-20260101.fch", older)
+        self.window.load_save_file(str(backup), apply_to=str(self.source))
+        self.assertIn("Restoring", self.window.file_label.text())
+        self.assertEqual(os.path.realpath(self.window.current_fch), os.path.realpath(self.source))
+        self.assertEqual(self.source.read_bytes(), self.original)  # nothing written yet
+        self.window.save_save_file()
+        self.assertEqual(RecordingMessageBox.calls[-1][0], "info")
+        self.assertEqual(self.source.read_bytes(), backup.read_bytes())
+        self.assertEqual(len(self._backups()), 1)
+        self.assertEqual(verify_fch_round_trip(str(self.source))["character_name"], "Older")
 
     def test_noop_save_is_byte_identical(self):
         self.assertTrue(self.window.btn_save_save.isEnabled())

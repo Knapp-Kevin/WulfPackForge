@@ -4,6 +4,9 @@ import os
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
+from subscripts.characterRecords import find_state
+from ui.characterStatesDialog import CharacterStatesDialog
+
 NO_CHARACTERS_HELP = (
     "No local character files were found. If this character is stored in Steam Cloud, "
     "make sure Steam has synchronized it to this computer and that Valheim can see it locally, "
@@ -17,12 +20,13 @@ class CharacterPickerBar(QWidget):
 
     open_requested = Signal(str)
     new_requested = Signal()
+    restore_requested = Signal(str, str)  # state path, head path
 
     def __init__(self, discover, parent=None):
         super().__init__(parent)
         self._discover = discover
         self._last_path = None
-        self.characters = []
+        self.records = []
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -42,6 +46,7 @@ class CharacterPickerBar(QWidget):
         self.btn_refresh_characters.clicked.connect(lambda: self.refresh(self._last_path))
         self.btn_open_discovered.clicked.connect(self._emit_open)
         self.btn_new_character.clicked.connect(self.new_requested)
+        self.btn_states.clicked.connect(self._show_states)
         self.character_combo.activated.connect(lambda _index: self._update_tooltip())
 
     def _build_row(self) -> QHBoxLayout:
@@ -53,6 +58,8 @@ class CharacterPickerBar(QWidget):
         )
         self.btn_refresh_characters = QPushButton("Refresh")
         self.btn_open_discovered = QPushButton("Open Character")
+        self.btn_states = QPushButton("States…")
+        self.btn_states.setToolTip("Every copy of this character: the active save, Valheim's own backups, and Wulfpack Forge snapshots and backups.")
         self.btn_new_character = QPushButton("New Character")
         self.btn_new_character.setToolTip(
             "Create a brand-new character file with the game's starting defaults and open it for editing."
@@ -61,55 +68,72 @@ class CharacterPickerBar(QWidget):
         row.addWidget(self.character_combo, 1)
         row.addWidget(self.btn_refresh_characters)
         row.addWidget(self.btn_open_discovered)
+        row.addWidget(self.btn_states)
         row.addWidget(self.btn_new_character)
         return row
 
     def refresh(self, current_path):
         self._last_path = current_path
-        self.characters = self._discover()
+        self.records = self._discover()
         self.character_combo.clear()
-        if not self.characters:
+        if not self.records:
             self._show_empty()
             return
         self.discovery_help.setVisible(False)
         selected_index = 0
-        for index, character in enumerate(self.characters):
-            self.character_combo.addItem(character.display_label, character.path)
-            if current_path and os.path.normcase(character.path) == os.path.normcase(current_path):
+        for index, record in enumerate(self.records):
+            head = record.head
+            self.character_combo.addItem(record.display_label, head.path if head else None)
+            if current_path and find_state([record], current_path):
                 selected_index = index
         self.character_combo.setCurrentIndex(selected_index)
         self.btn_open_discovered.setEnabled(True)
+        self.btn_states.setEnabled(True)
         self._update_tooltip()
 
     def _show_empty(self):
         self.character_combo.addItem("No local Valheim character files found", None)
         self.btn_open_discovered.setEnabled(False)
+        self.btn_states.setEnabled(False)
         self.character_combo.setToolTip("Wulfpack Forge can only open character files that exist on this computer.")
         self.discovery_help.setText(NO_CHARACTERS_HELP)
         self.discovery_help.setVisible(True)
 
     def metadata_for(self, filename):
         """``(source, modified_at)`` for a path, from discovery when known, else from the filesystem."""
-        normalized = os.path.normcase(os.path.abspath(filename))
-        for character in self.characters:
-            if os.path.normcase(os.path.abspath(character.path)) == normalized:
-                return character.source, character.modified_at
+        found = find_state(self.records, filename)
+        if found:
+            return found[1].source, found[1].modified_at
         try:
             modified_at = os.path.getmtime(filename)
         except OSError:
             modified_at = None
         return "Manual file", modified_at
 
-    def _update_tooltip(self):
+    def current_record(self):
         index = self.character_combo.currentIndex()
-        if index < 0 or index >= len(self.characters):
+        return self.records[index] if 0 <= index < len(self.records) else None
+
+    def _update_tooltip(self):
+        record = self.current_record()
+        head = record.head if record else None
+        if head is None:
             return
-        character = self.characters[index]
-        details = [f"Path: {character.path}", f"Source: {character.source}", f"Modified: {character.modified_label}"]
-        if character.version is not None:
-            details.append(f"Save version: {character.version}")
-        details.append(f"Validation: {character.error}" if character.error else "Validation: checksum and structure verified")
+        details = [f"Active save: {head.path}", f"Source: {head.source}", f"Modified: {head.modified_label}",
+                   f"States: {len(record.states)}"]
+        if head.version is not None:
+            details.append(f"Save version: {head.version}")
+        details.append(f"Validation: {head.error}" if head.error else "Validation: checksum and structure verified")
         self.character_combo.setToolTip("\n".join(details))
+
+    def _show_states(self):
+        record = self.current_record()
+        if record is None:
+            return
+        dialog = CharacterStatesDialog(record, self)
+        dialog.open_requested.connect(self.open_requested)
+        dialog.restore_requested.connect(self.restore_requested)
+        dialog.exec()
 
     def _emit_open(self):
         path = self.character_combo.currentData()
