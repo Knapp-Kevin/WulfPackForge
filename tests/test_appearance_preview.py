@@ -64,6 +64,19 @@ class AppearancePreviewTests(unittest.TestCase):
         self.assertFalse(pixmap.isNull())
         self.assertEqual(pixmap.width(), 128)
 
+    def test_hdr_spin_updates_the_preview(self):
+        data = unpack_player_data_hex(realistic_player_hex())
+        baseline = copy.deepcopy(data)
+        tab = AppearanceTab()
+        tab.load_data(data)
+        before = tab.preview.pixmap().toImage()
+        tab.overbright_checkbox.setChecked(True)
+        tab.skin_hdr_spins[0].setValue(2.0)
+        tab.skin_hdr_spins[1].setValue(0.1)
+        tab.skin_hdr_spins[2].setValue(0.1)
+        self.assertNotEqual(before, tab.preview.pixmap().toImage())
+        self.assertEqual(data, baseline)
+
     def test_appearance_tab_preview_follows_selection(self):
         data = unpack_player_data_hex(realistic_player_hex())
         baseline = copy.deepcopy(data)

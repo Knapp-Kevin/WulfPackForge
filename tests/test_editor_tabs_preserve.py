@@ -148,6 +148,72 @@ class AppearanceTabPreserveTests(unittest.TestCase):
             if key != "skin_color":
                 self.assertEqual(data[key], baseline[key], key)
 
+    def test_hdr_controls_are_opt_in_and_negative_values_are_prohibited(self):
+        tab = AppearanceTab()
+        data = loaded_player_data()
+        tab.load_data(data)
+
+        self.assertFalse(tab.overbright_checkbox.isChecked())
+        self.assertFalse(tab.skin_hdr_spins[0].isEnabled())
+
+        tab.overbright_checkbox.setChecked(True)
+        self.assertTrue(tab.skin_hdr_spins[0].isEnabled())
+        tab.skin_hdr_spins[0].setValue(-5.0)
+        self.assertEqual(tab.skin_hdr_spins[0].value(), 0.0)
+        self.assertEqual(tab.current_skin_rgb[0], 0.0)
+
+    def test_overbright_values_save_without_clamping(self):
+        tab = AppearanceTab()
+        data = loaded_player_data()
+        baseline = copy.deepcopy(data)
+        tab.load_data(data)
+        tab.overbright_checkbox.setChecked(True)
+        for spin, value in zip(tab.skin_hdr_spins, (2.0, 3.0, 4.0)):
+            spin.setValue(value)
+        for spin, value in zip(tab.hair_hdr_spins, (0.5, 2.5, 4.0)):
+            spin.setValue(value)
+
+        tab.save_changes()
+        self.assertEqual(data["skin_color"], [2.0, 3.0, 4.0])
+        self.assertEqual(data["hair_color"], [0.5, 2.5, 4.0])
+        for key in baseline:
+            if key not in ("skin_color", "hair_color"):
+                self.assertEqual(data[key], baseline[key], key)
+
+    def test_existing_overbright_character_loads_enabled_and_round_trips(self):
+        data = loaded_player_data()
+        data["skin_color"] = [2.0, 2.0, 2.0]
+        data["hair_color"] = [1.0, 2.0, 4.0]
+        baseline = copy.deepcopy(data)
+
+        tab = AppearanceTab()
+        tab.load_data(data)
+        self.assertTrue(tab.overbright_checkbox.isChecked())
+        self.assertEqual([spin.value() for spin in tab.skin_hdr_spins], [2.0, 2.0, 2.0])
+        self.assertEqual([spin.value() for spin in tab.hair_hdr_spins], [1.0, 2.0, 4.0])
+        tab.save_changes()
+        self.assertEqual(data, baseline)
+
+    def test_glow_preset_preserves_hue_and_sets_peak_intensity(self):
+        data = loaded_player_data()
+        data["skin_color"] = [0.25, 0.5, 1.0]
+        tab = AppearanceTab()
+        tab.load_data(data)
+        tab.overbright_checkbox.setChecked(True)
+        tab.preset_target_combo.setCurrentIndex(tab.preset_target_combo.findData("skin"))
+        tab.apply_intensity_preset(4.0)
+
+        self.assertEqual(tab.current_skin_rgb, [1.0, 2.0, 4.0])
+        self.assertEqual(tab.skin_intensity_label.text(), "HDR 4.00×")
+
+    def test_extreme_values_show_warning(self):
+        data = loaded_player_data()
+        tab = AppearanceTab()
+        tab.load_data(data)
+        tab.overbright_checkbox.setChecked(True)
+        tab.skin_hdr_spins[0].setValue(8.0)
+        self.assertIn("Extreme overbright", tab.hdr_warning_label.text())
+
 
 class StatsTabPreserveTests(unittest.TestCase):
     def test_noop_preserves_four_foods_low_vitals_and_food_precision(self):
