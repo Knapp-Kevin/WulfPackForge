@@ -66,6 +66,7 @@ The project is currently evolving toward its first branded Wulfpack Forge releas
 - The Stats tab. Health, stamina, eitr, active foods, guardian power, and the cheat flag are no longer editable; Wulfpack Forge is a character editor, not a cheat panel, and Valheim recalculates the vitals from food anyway. All of those fields still pass through untouched when you save.
 
 ### Changed
+- Character discovery runs off the interface thread. The list shows "Scanning for characters…" while it works, the window stays responsive with large save libraries or slow disks, and a refresh requested mid-scan runs once more when the scan finishes.
 - The README records that characters created and edited with Wulfpack Forge have been loaded and played in Valheim 0.221.12.
 - Hardening pass: the main window imports Qt classes explicitly, load and save failures are written to the log as well as shown, and temp-file cleanup failures are logged instead of ignored. The Valheim process scan and the save-flow filesystem helpers moved below the UI layer (`subscripts/`), and the structural test now also refuses star imports and any Qt import outside `ui/`.
 - Internal structure pass under the project's Simplicity Razor: the main window is split into banner, character picker, and save-flow modules, the HDR colour group is its own widget, the binary reader and writer live in `subscripts/binaryIO.py`, and long functions were decomposed. No behaviour changed; a structural test now keeps every file under 250 lines, every function under 40, and nesting at three levels or fewer.
