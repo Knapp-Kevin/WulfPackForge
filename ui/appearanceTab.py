@@ -8,40 +8,26 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
     QLabel,
-    QCheckBox,
-    QDoubleSpinBox,
 )
 from PySide6.QtCore import QSize
-from PySide6.QtGui import QColor, QPalette
+from PySide6.QtGui import QPalette
 from data.appearance import BEARD_NONE, HAIR_NONE, VALHEIM_BEARDS, VALHEIM_HAIRS, display_key
 from ui.fieldTracker import FieldTracker, select_or_add_unknown
 from ui.appearancePreview import AppearancePreview
 from ui.glyphs import populate_appearance_combo
+from ui.hdrColorControls import (  # noqa: F401  (constants re-exported for callers)
+    EXTREME_HDR_THRESHOLD,
+    MAX_HDR_COMPONENT,
+    HdrColorControls,
+    intensity as _intensity,
+    picked_rgb as _picked,
+    sanitise_loaded_color,
+    scaled_from_base as _scaled_from_base,
+    sdr_base as _sdr_base,
+    to_sdr_qcolor as _to_qcolor,
+)
 
 COMBO_ICON = QSize(72, 72)
-MAX_HDR_COMPONENT = 10.0
-EXTREME_HDR_THRESHOLD = 4.0
-
-
-def _to_qcolor(rgb_list) -> QColor:
-    """Map an HDR color to an SDR preview without mutating the stored floats."""
-    return QColor(*(int(max(0.0, min(1.0, component)) * 255) for component in rgb_list[:3]))
-
-
-def _intensity(rgb_list) -> float:
-    return max((float(component) for component in rgb_list[:3]), default=0.0)
-
-
-def _sdr_base(rgb_list) -> list:
-    """The colour as it would be picked in SDR: unchanged when its peak is at most 1.0, else divided by the peak."""
-    safe = [max(0.0, float(component)) for component in rgb_list[:3]]
-    peak = max(safe, default=0.0)
-    return safe if peak <= 1.0 else [component / peak for component in safe]
-
-
-def _scaled_from_base(base, intensity: float) -> list:
-    """``intensity`` times the SDR base, clamped to the HDR ceiling; 1.0 restores the base exactly."""
-    return [min(MAX_HDR_COMPONENT, component * intensity) for component in base]
 
 
 class AppearanceTab(QWidget):
@@ -51,7 +37,10 @@ class AppearanceTab(QWidget):
         super().__init__()
         self.player_data = None
         self.tracker = FieldTracker()
-        self._syncing_hdr = False
+        self.current_skin_rgb = [1.0, 1.0, 1.0]
+        self.current_hair_rgb = [1.0, 1.0, 1.0]
+        self._sdr_skin = [1.0, 1.0, 1.0]
+        self._sdr_hair = [1.0, 1.0, 1.0]
 
         outer = QHBoxLayout(self)
         main_layout = QVBoxLayout()
@@ -63,174 +52,97 @@ class AppearanceTab(QWidget):
         preview_layout.addStretch()
         outer.addWidget(preview_group, 0)
 
-        style_group = QGroupBox("Physical Customization")
-        style_layout = QFormLayout(style_group)
+        main_layout.addWidget(self._build_style_group())
+        main_layout.addWidget(self._build_color_group())
+        self.hdr = HdrColorControls()
+        self._alias_hdr_children()
+        main_layout.addWidget(self.hdr)
+        main_layout.addStretch()
+        self._connect()
+        self._update_hdr_enabled(False)
+        self.refresh_preview()
 
+    # ------------------------------------------------------------ construction
+    def _build_style_group(self) -> QGroupBox:
+        group = QGroupBox("Physical Customization")
+        layout = QFormLayout(group)
         self.model_combo = QComboBox()
         self.model_combo.addItem("Male (Model 0)", 0)
         self.model_combo.addItem("Female (Model 1)", 1)
-
         self.hair_combo = QComboBox()
         self.hair_combo.setIconSize(COMBO_ICON)
         populate_appearance_combo(self.hair_combo, VALHEIM_HAIRS, "hair")
-
         self.beard_combo = QComboBox()
         self.beard_combo.setIconSize(COMBO_ICON)
         populate_appearance_combo(self.beard_combo, VALHEIM_BEARDS, "beard")
+        layout.addRow("Gender Model:", self.model_combo)
+        layout.addRow("Hair Style:", self.hair_combo)
+        layout.addRow("Beard Style:", self.beard_combo)
+        return group
 
-        style_layout.addRow("Gender Model:", self.model_combo)
-        style_layout.addRow("Hair Style:", self.hair_combo)
-        style_layout.addRow("Beard Style:", self.beard_combo)
-        main_layout.addWidget(style_group)
+    def _build_color_group(self) -> QGroupBox:
+        group = QGroupBox("Color Customization")
+        layout = QHBoxLayout(group)
+        skin_column, self.skin_preview, self.skin_intensity_label, self.btn_skin_color = self._swatch_column(
+            "Skin Tone:", "Pick Skin Color"
+        )
+        hair_column, self.hair_preview, self.hair_intensity_label, self.btn_hair_color = self._swatch_column(
+            "Hair/Beard Color:", "Pick Hair Color"
+        )
+        layout.addLayout(skin_column)
+        layout.addSpacing(40)
+        layout.addLayout(hair_column)
+        return group
 
-        color_group = QGroupBox("Color Customization")
-        color_layout = QHBoxLayout(color_group)
+    @staticmethod
+    def _swatch_column(title: str, button_text: str):
+        column = QVBoxLayout()
+        column.addWidget(QLabel(title))
+        swatch = QWidget()
+        swatch.setFixedSize(100, 30)
+        swatch.setAutoFillBackground(True)
+        label = QLabel("Standard")
+        button = QPushButton(button_text)
+        column.addWidget(swatch)
+        column.addWidget(label)
+        column.addWidget(button)
+        return column, swatch, label, button
 
-        skin_vbox = QVBoxLayout()
-        skin_vbox.addWidget(QLabel("Skin Tone:"))
-        self.btn_skin_color = QPushButton("Pick Skin Color")
-        self.skin_preview = QWidget()
-        self.skin_preview.setFixedSize(100, 30)
-        self.skin_preview.setAutoFillBackground(True)
-        self.skin_intensity_label = QLabel("Standard")
-        skin_vbox.addWidget(self.skin_preview)
-        skin_vbox.addWidget(self.skin_intensity_label)
-        skin_vbox.addWidget(self.btn_skin_color)
-        color_layout.addLayout(skin_vbox)
+    def _alias_hdr_children(self):
+        """Keep the historic attribute names on the tab for callers and tests."""
+        self.overbright_checkbox = self.hdr.overbright_checkbox
+        self.hdr_help_label = self.hdr.help_label
+        self.hdr_controls = self.hdr.controls
+        self.skin_hdr_spins = self.hdr.skin_spins
+        self.hair_hdr_spins = self.hdr.hair_spins
+        self.preset_target_combo = self.hdr.preset_target_combo
+        self.hdr_warning_label = self.hdr.warning_label
+        buttons = self.hdr.preset_buttons
+        self.btn_preset_normal, self.btn_preset_bright = buttons[1.0], buttons[2.0]
+        self.btn_preset_glow, self.btn_preset_extreme = buttons[4.0], buttons[8.0]
 
-        color_layout.addSpacing(40)
-
-        hair_vbox = QVBoxLayout()
-        hair_vbox.addWidget(QLabel("Hair/Beard Color:"))
-        self.btn_hair_color = QPushButton("Pick Hair Color")
-        self.hair_preview = QWidget()
-        self.hair_preview.setFixedSize(100, 30)
-        self.hair_preview.setAutoFillBackground(True)
-        self.hair_intensity_label = QLabel("Standard")
-        hair_vbox.addWidget(self.hair_preview)
-        hair_vbox.addWidget(self.hair_intensity_label)
-        hair_vbox.addWidget(self.btn_hair_color)
-        color_layout.addLayout(hair_vbox)
-
-        main_layout.addWidget(color_group)
-        main_layout.addWidget(self._build_hdr_group())
-        main_layout.addStretch()
-
-        self.current_skin_rgb = [1.0, 1.0, 1.0]
-        self.current_hair_rgb = [1.0, 1.0, 1.0]
-        self._sdr_skin = [1.0, 1.0, 1.0]
-        self._sdr_hair = [1.0, 1.0, 1.0]
-
+    def _connect(self):
         self.btn_skin_color.clicked.connect(self.choose_skin_color)
         self.btn_hair_color.clicked.connect(self.choose_hair_color)
         self.model_combo.currentIndexChanged.connect(self.on_model_changed)
         self.hair_combo.currentIndexChanged.connect(self.refresh_preview)
         self.beard_combo.currentIndexChanged.connect(self.refresh_preview)
         self.overbright_checkbox.toggled.connect(self._update_hdr_enabled)
-        self.btn_preset_normal.clicked.connect(lambda: self.apply_intensity_preset(1.0))
-        self.btn_preset_bright.clicked.connect(lambda: self.apply_intensity_preset(2.0))
-        self.btn_preset_glow.clicked.connect(lambda: self.apply_intensity_preset(4.0))
-        self.btn_preset_extreme.clicked.connect(lambda: self.apply_intensity_preset(8.0))
-        self._update_hdr_enabled(False)
-        self.refresh_preview()
+        self.hdr.values_edited.connect(self._on_hdr_value_changed)
+        self.hdr.preset_requested.connect(self.apply_intensity_preset)
 
-    # ------------------------------------------------------------ HDR controls (PR #16)
-    def _build_hdr_group(self) -> QGroupBox:
-        hdr_group = QGroupBox("Advanced HDR / Overbright Colors")
-        hdr_layout = QVBoxLayout(hdr_group)
-        self.overbright_checkbox = QCheckBox("Allow overbright values above 1.0")
-        self.overbright_checkbox.setToolTip(
-            "Explicitly enables HDR-style color values above Valheim's normal 0.0–1.0 range. "
-            "Negative values are never allowed."
-        )
-        hdr_layout.addWidget(self.overbright_checkbox)
-
-        self.hdr_help_label = QLabel(
-            "Standard colors use 0.0–1.0. Overbright mode allows up to 10.0 for experimentation. "
-            "The swatch and the head preview show hue only; values above 1.0 cannot be represented faithfully on a normal UI."
-        )
-        self.hdr_help_label.setWordWrap(True)
-        hdr_layout.addWidget(self.hdr_help_label)
-
-        # The RGB rows and presets replace the SDR picker buttons while overbright mode is on.
-        self.hdr_controls = QWidget()
-        controls_layout = QVBoxLayout(self.hdr_controls)
-        controls_layout.setContentsMargins(0, 0, 0, 0)
-        self.skin_hdr_spins = self._build_hdr_row(controls_layout, "Skin RGB:")
-        self.hair_hdr_spins = self._build_hdr_row(controls_layout, "Hair/Beard RGB:")
-
-        preset_row = QHBoxLayout()
-        self.preset_target_combo = QComboBox()
-        self.preset_target_combo.addItem("Skin", "skin")
-        self.preset_target_combo.addItem("Hair/Beard", "hair")
-        self.preset_target_combo.addItem("Both", "both")
-        preset_row.addWidget(QLabel("Preset target:"))
-        preset_row.addWidget(self.preset_target_combo)
-        self.btn_preset_normal = QPushButton("Normal 1×")
-        self.btn_preset_bright = QPushButton("Bright 2×")
-        self.btn_preset_glow = QPushButton("Glow 4×")
-        self.btn_preset_extreme = QPushButton("Extreme 8×")
-        for button in (self.btn_preset_normal, self.btn_preset_bright, self.btn_preset_glow, self.btn_preset_extreme):
-            preset_row.addWidget(button)
-        controls_layout.addLayout(preset_row)
-        hdr_layout.addWidget(self.hdr_controls)
-
-        self.hdr_warning_label = QLabel()
-        self.hdr_warning_label.setWordWrap(True)
-        hdr_layout.addWidget(self.hdr_warning_label)
-        return hdr_group
-
-    def _build_hdr_row(self, parent_layout, label):
-        row = QHBoxLayout()
-        row.addWidget(QLabel(label))
-        spins = []
-        for channel in ("R", "G", "B"):
-            spin = QDoubleSpinBox()
-            spin.setRange(0.0, MAX_HDR_COMPONENT)
-            spin.setDecimals(3)
-            spin.setSingleStep(0.1)
-            spin.setPrefix(f"{channel} ")
-            spin.valueChanged.connect(self._on_hdr_value_changed)
-            row.addWidget(spin)
-            spins.append(spin)
-        row.addStretch()
-        parent_layout.addLayout(row)
-        return spins
-
-    def _sanitise_loaded_color(self, value):
-        """Refuse negative color data while preserving valid overbright values."""
-        values = list(value[:3]) if value else [1.0, 1.0, 1.0]
-        while len(values) < 3:
-            values.append(0.0)
-        return [min(MAX_HDR_COMPONENT, max(0.0, float(component))) for component in values]
-
+    # ------------------------------------------------------------ HDR controls
     def _update_hdr_enabled(self, enabled):
-        self.hdr_controls.setVisible(enabled)
+        self.hdr.set_overbright(enabled)
         self.btn_skin_color.setVisible(not enabled)
         self.btn_hair_color.setVisible(not enabled)
-        for spin in self.skin_hdr_spins + self.hair_hdr_spins:
-            spin.setEnabled(enabled)
-        for button in (self.btn_preset_bright, self.btn_preset_glow, self.btn_preset_extreme):
-            button.setEnabled(enabled)
-        # Normalisation is always available so a loaded HDR character can be returned to the safe range.
-        self.btn_preset_normal.setEnabled(True)
         self._refresh_hdr_warning()
 
     def _sync_hdr_spins(self):
-        self._syncing_hdr = True
-        try:
-            for spin, value in zip(self.skin_hdr_spins, self.current_skin_rgb):
-                spin.setValue(value)
-            for spin, value in zip(self.hair_hdr_spins, self.current_hair_rgb):
-                spin.setValue(value)
-        finally:
-            self._syncing_hdr = False
+        self.hdr.sync(self.current_skin_rgb, self.current_hair_rgb)
 
-    def _on_hdr_value_changed(self, _value):
-        if self._syncing_hdr:
-            return
-        self.current_skin_rgb = [spin.value() for spin in self.skin_hdr_spins]
-        self.current_hair_rgb = [spin.value() for spin in self.hair_hdr_spins]
+    def _on_hdr_value_changed(self):
+        self.current_skin_rgb, self.current_hair_rgb = self.hdr.values()
         self._refresh_color_ui()
 
     def _refresh_color_ui(self):
@@ -247,30 +159,16 @@ class AppearanceTab(QWidget):
         return "Standard" if peak <= 1.0 else f"HDR {peak:.2f}×"
 
     def _refresh_hdr_warning(self):
-        peak = max(_intensity(self.current_skin_rgb), _intensity(self.current_hair_rgb))
-        if peak > EXTREME_HDR_THRESHOLD:
-            self.hdr_warning_label.setText(
-                f"Extreme overbright value detected ({peak:.2f}). Values above {EXTREME_HDR_THRESHOLD:.1f} "
-                "may bloom heavily, wash out the character, or render poorly in Valheim."
-            )
-        elif peak > 1.0:
-            self.hdr_warning_label.setText(
-                "Overbright values are active. Wulfpack Forge will preserve these floats exactly, but the "
-                "visual result depends on Valheim's material/shader behavior."
-            )
-        else:
-            self.hdr_warning_label.setText(
-                "Safe range active. Negative values are prohibited; enable overbright mode before entering values above 1.0."
-            )
+        self.hdr.show_warning(max(_intensity(self.current_skin_rgb), _intensity(self.current_hair_rgb)))
 
-    def apply_intensity_preset(self, intensity):
-        if intensity > 1.0 and not self.overbright_checkbox.isChecked():
+    def apply_intensity_preset(self, factor):
+        if factor > 1.0 and not self.overbright_checkbox.isChecked():
             return
         target = self.preset_target_combo.currentData()
         if target in ("skin", "both"):
-            self.current_skin_rgb = _scaled_from_base(self._sdr_skin, intensity)
+            self.current_skin_rgb = _scaled_from_base(self._sdr_skin, factor)
         if target in ("hair", "both"):
-            self.current_hair_rgb = _scaled_from_base(self._sdr_hair, intensity)
+            self.current_hair_rgb = _scaled_from_base(self._sdr_hair, factor)
         self._sync_hdr_spins()
         self._refresh_color_ui()
 
@@ -292,14 +190,13 @@ class AppearanceTab(QWidget):
         self.player_data = player_data
         if not self.player_data:
             return
-
         select_or_add_unknown(self.model_combo, self.player_data.get("model_index", 0))
         select_or_add_unknown(self.hair_combo, display_key(self.player_data.get("hair", ""), HAIR_NONE))
         select_or_add_unknown(self.beard_combo, display_key(self.player_data.get("beard", ""), BEARD_NONE))
         self.beard_combo.setEnabled(self.model_combo.currentData() == 0)
 
-        self.current_skin_rgb = self._sanitise_loaded_color(self.player_data.get("skin_color", [1.0, 1.0, 1.0]))
-        self.current_hair_rgb = self._sanitise_loaded_color(self.player_data.get("hair_color", [1.0, 1.0, 1.0]))
+        self.current_skin_rgb = sanitise_loaded_color(self.player_data.get("skin_color", [1.0, 1.0, 1.0]))
+        self.current_hair_rgb = sanitise_loaded_color(self.player_data.get("hair_color", [1.0, 1.0, 1.0]))
         self._sdr_skin = _sdr_base(self.current_skin_rgb)
         self._sdr_hair = _sdr_base(self.current_hair_rgb)
         has_existing_overbright = max(_intensity(self.current_skin_rgb), _intensity(self.current_hair_rgb)) > 1.0
@@ -321,7 +218,7 @@ class AppearanceTab(QWidget):
     def choose_skin_color(self):
         color = QColorDialog.getColor(_to_qcolor(self.current_skin_rgb), self, "Select Skin Color")
         if color.isValid():
-            self.current_skin_rgb = [color.red() / 255.0, color.green() / 255.0, color.blue() / 255.0]
+            self.current_skin_rgb = _picked(color)
             self._sdr_skin = list(self.current_skin_rgb)
             self._sync_hdr_spins()
             self._refresh_color_ui()
@@ -329,7 +226,7 @@ class AppearanceTab(QWidget):
     def choose_hair_color(self):
         color = QColorDialog.getColor(_to_qcolor(self.current_hair_rgb), self, "Select Hair/Beard Color")
         if color.isValid():
-            self.current_hair_rgb = [color.red() / 255.0, color.green() / 255.0, color.blue() / 255.0]
+            self.current_hair_rgb = _picked(color)
             self._sdr_hair = list(self.current_hair_rgb)
             self._sync_hdr_spins()
             self._refresh_color_ui()
@@ -337,7 +234,6 @@ class AppearanceTab(QWidget):
     def save_changes(self):
         if not self.player_data:
             return
-
         pending = {
             "model_index": self.model_combo.currentData(),
             "hair": self.hair_combo.currentData(),

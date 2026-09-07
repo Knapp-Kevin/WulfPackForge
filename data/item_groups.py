@@ -152,20 +152,24 @@ def navigation_tree() -> List[Tuple[str, List[Tuple[str, List[str]]]]]:
     for group in GROUPS:
         branches: List[Tuple[str, List[str]]] = []
         if group in _BRANCHED_GROUPS:
-            items = items_in_group(group)
-            present = {subgroup_for(item) for item in items} - {None}
+            present = {subgroup_for(item) for item in items_in_group(group)} - {None}
             for subgroup in [s for s in _SUBTYPE_ORDER if s in present]:
-                materials, unranked = [], False
-                for item in items_under(group, subgroup):
-                    label = material_for(item)
-                    unranked = unranked or label is None
-                    if label and label not in materials:
-                        materials.append(label)
-                if len(materials) > 1 and unranked:
-                    materials.append(OTHER_MATERIAL)  # nothing hides below the type level
-                branches.append((subgroup, materials if len(materials) > 1 else []))
+                branches.append((subgroup, _branch_materials(group, subgroup)))
         tree.append((group, branches))
     return tree
+
+
+def _branch_materials(group: str, subgroup: str) -> List[str]:
+    """Material labels under a type, plus ``Other`` when unranked items exist; empty if only one."""
+    materials, unranked = [], False
+    for item in items_under(group, subgroup):
+        label = material_for(item)
+        unranked = unranked or label is None
+        if label and label not in materials:
+            materials.append(label)
+    if len(materials) > 1 and unranked:
+        materials.append(OTHER_MATERIAL)  # nothing hides below the type level
+    return materials if len(materials) > 1 else []
 
 
 def pickable_items() -> List[ItemDefinition]:

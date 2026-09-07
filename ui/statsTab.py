@@ -17,6 +17,14 @@ from data.powers import GUARDIAN_POWERS
 from ui.fieldTracker import FieldTracker, select_or_add_unknown
 
 MAX_ACTIVE_FOODS = 3
+_DEFAULT_VITALS = (("health", 25.0), ("stamina", 50.0))
+
+
+def _default_vital(key: str) -> float:
+    for token, value in _DEFAULT_VITALS:
+        if token in key:
+            return value
+    return 0.0
 
 
 class StatsTab(QWidget):
@@ -40,9 +48,18 @@ class StatsTab(QWidget):
 
         main_layout = QVBoxLayout(self)
         top_layout = QHBoxLayout()
+        top_layout.addWidget(self._build_vitals_group())
+        top_layout.addWidget(self._build_food_group())
+        main_layout.addLayout(top_layout)
+        main_layout.addWidget(self._build_power_group())
+        main_layout.addWidget(self._build_flags_group())
+        main_layout.addStretch()
+        self.btn_add_food.clicked.connect(self.add_food_from_button)
+        self.btn_remove_food.clicked.connect(self.remove_selected_food)
 
-        vitals_group = QGroupBox("Vitals")
-        vitals_layout = QFormLayout(vitals_group)
+    def _build_vitals_group(self) -> QGroupBox:
+        group = QGroupBox("Vitals")
+        layout = QFormLayout(group)
         labels = {
             "max_health": "Max Health:", "health": "Current Health:",
             "max_stamina": "Max Stamina:", "stamina": "Current Stamina:",
@@ -51,55 +68,52 @@ class StatsTab(QWidget):
         for key, minimum in self.VITALS:
             spin = QDoubleSpinBox()
             spin.setRange(minimum, 99999.0)
-            spin.setValue(max(minimum, 25.0 if "health" in key else 50.0 if "stamina" in key else 0.0))
+            spin.setValue(max(minimum, _default_vital(key)))
             self.vital_spins[key] = spin
-            vitals_layout.addRow(labels[key], spin)
+            layout.addRow(labels[key], spin)
         self.max_health_spin = self.vital_spins["max_health"]
         self.health_spin = self.vital_spins["health"]
         self.max_stamina_spin = self.vital_spins["max_stamina"]
         self.stamina_spin = self.vital_spins["stamina"]
         self.max_eitr_spin = self.vital_spins["max_eitr"]
         self.eitr_spin = self.vital_spins["eitr"]
-        top_layout.addWidget(vitals_group)
+        return group
 
-        food_group = QGroupBox(f"Active Food Buffs (Max {MAX_ACTIVE_FOODS})")
-        food_layout = QVBoxLayout(food_group)
-        food_buttons = QHBoxLayout()
+    def _build_food_group(self) -> QGroupBox:
+        group = QGroupBox(f"Active Food Buffs (Max {MAX_ACTIVE_FOODS})")
+        layout = QVBoxLayout(group)
+        buttons = QHBoxLayout()
         self.btn_add_food = QPushButton("Add Food")
         self.btn_remove_food = QPushButton("Remove Selected")
-        food_buttons.addWidget(self.btn_add_food)
-        food_buttons.addWidget(self.btn_remove_food)
-        food_layout.addLayout(food_buttons)
-
+        buttons.addWidget(self.btn_add_food)
+        buttons.addWidget(self.btn_remove_food)
+        layout.addLayout(buttons)
         self.food_table = QTableWidget()
         self.food_table.setColumnCount(2)
         self.food_table.setHorizontalHeaderLabels(["Food Prefab", "Time Left (sec)"])
         self.food_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        food_layout.addWidget(self.food_table)
-        top_layout.addWidget(food_group)
-        main_layout.addLayout(top_layout)
+        layout.addWidget(self.food_table)
+        return group
 
-        gp_group = QGroupBox("Guardian Power")
-        gp_layout = QFormLayout(gp_group)
+    def _build_power_group(self) -> QGroupBox:
+        group = QGroupBox("Guardian Power")
+        layout = QFormLayout(group)
         self.gp_combo = QComboBox()
         for internal_name, display_name in GUARDIAN_POWERS.items():
             self.gp_combo.addItem(display_name, internal_name)
         self.gp_cooldown_spin = QDoubleSpinBox()
         self.gp_cooldown_spin.setRange(0.0, 999999.0)
         self.gp_cooldown_spin.setSuffix(" seconds")
-        gp_layout.addRow("Active Power:", self.gp_combo)
-        gp_layout.addRow("Cooldown Remaining:", self.gp_cooldown_spin)
-        main_layout.addWidget(gp_group)
+        layout.addRow("Active Power:", self.gp_combo)
+        layout.addRow("Cooldown Remaining:", self.gp_cooldown_spin)
+        return group
 
-        meta_group = QGroupBox("Character Flags")
-        meta_layout = QFormLayout(meta_group)
+    def _build_flags_group(self) -> QGroupBox:
+        group = QGroupBox("Character Flags")
+        layout = QFormLayout(group)
         self.used_cheats_check = QCheckBox("Used Cheats Flag")
-        meta_layout.addRow(self.used_cheats_check)
-        main_layout.addWidget(meta_group)
-        main_layout.addStretch()
-
-        self.btn_add_food.clicked.connect(self.add_food_from_button)
-        self.btn_remove_food.clicked.connect(self.remove_selected_food)
+        layout.addRow(self.used_cheats_check)
+        return group
 
     def load_data(self, player_data, root_save):
         """Load the nested payload and the outer container; remember what every widget reports."""

@@ -15,21 +15,24 @@ SLOT_ORDER = (
 ICON = 40
 
 
+def _slot_keys(definition) -> List[str]:
+    """Panel rows an equipped item occupies: its slot, both hands, one hand, or none."""
+    slot, hands = slot_for(definition), hands_for(definition)
+    if slot:
+        return [slot]
+    if hands == "both":
+        return ["right", "left"]
+    return [hands] if hands else []
+
+
 def occupants(inventory: List[dict]) -> Dict[str, Optional[dict]]:
     """Which equipped item sits in each slot; the first equipped item wins, nothing is changed."""
     found: Dict[str, Optional[dict]] = {key: None for key, _ in SLOT_ORDER}
     for item in inventory:
         if not item.get("equipped"):
             continue
-        definition = resolve_item(item.get("prefab", ""))
-        slot, hands = slot_for(definition), hands_for(definition)
-        if slot:
-            found[slot] = found[slot] or item
-        elif hands == "both":
-            found["right"] = found["right"] or item
-            found["left"] = found["left"] or item
-        elif hands:
-            found[hands] = found[hands] or item
+        for key in _slot_keys(resolve_item(item.get("prefab", ""))):
+            found[key] = found[key] or item
     return found
 
 

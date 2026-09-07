@@ -45,6 +45,14 @@ class ItemPickerDialog(QDialog):
         self._build_tree()
         layout.addWidget(self.categories)
 
+        layout.addLayout(self._build_right_pane(), 1)
+
+        self.categories.currentItemChanged.connect(self._node_changed)
+        self.search.textChanged.connect(self._apply_search)
+        self.grid.itemDoubleClicked.connect(lambda _item: self.accept())
+        self.categories.setCurrentItem(self.categories.topLevelItem(0))
+
+    def _build_right_pane(self) -> QVBoxLayout:
         right = QVBoxLayout()
         self.breadcrumb = QLabel(GROUPS[0])
         self.breadcrumb.setStyleSheet("font-weight: 600; color: #8ad7c1;")
@@ -52,7 +60,6 @@ class ItemPickerDialog(QDialog):
         self.search = QLineEdit()
         self.search.setPlaceholderText("Search all items by name or prefab")
         right.addWidget(self.search)
-
         self.pages = QStackedWidget()
         self.grid = QListWidget()
         self.grid.setViewMode(QListWidget.IconMode)
@@ -63,7 +70,15 @@ class ItemPickerDialog(QDialog):
         self.grid.setUniformItemSizes(True)
         self.grid.setWordWrap(True)
         self.pages.addWidget(self.grid)
+        self.pages.addWidget(self._build_advanced_page())
+        right.addWidget(self.pages, 1)
+        self.buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self.buttons.accepted.connect(self.accept)
+        self.buttons.rejected.connect(self.reject)
+        right.addWidget(self.buttons)
+        return right
 
+    def _build_advanced_page(self) -> QWidget:
         advanced = QWidget()
         advanced_layout = QVBoxLayout(advanced)
         advanced_layout.addWidget(QLabel(
@@ -74,19 +89,7 @@ class ItemPickerDialog(QDialog):
         self.raw_input.setPlaceholderText("Prefab ID")
         advanced_layout.addWidget(self.raw_input)
         advanced_layout.addStretch()
-        self.pages.addWidget(advanced)
-        right.addWidget(self.pages, 1)
-
-        self.buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        self.buttons.accepted.connect(self.accept)
-        self.buttons.rejected.connect(self.reject)
-        right.addWidget(self.buttons)
-        layout.addLayout(right, 1)
-
-        self.categories.currentItemChanged.connect(self._node_changed)
-        self.search.textChanged.connect(self._apply_search)
-        self.grid.itemDoubleClicked.connect(lambda _item: self.accept())
-        self.categories.setCurrentItem(self.categories.topLevelItem(0))
+        return advanced
 
     def _build_tree(self) -> None:
         for group, branches in navigation_tree():

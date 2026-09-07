@@ -26,7 +26,25 @@ class SkillsTab(QWidget):
         self.tracker = FieldTracker()
 
         layout = QVBoxLayout(self)
+        layout.addLayout(self._build_toolbar())
+        self.empty_hint = QLabel(
+            "This character has no skills yet, which is how the game writes a brand-new character. "
+            "Use Add Skill for one skill, or Add All Skills to start every vanilla skill at level 0."
+        )
+        self.empty_hint.setWordWrap(True)
+        self.empty_hint.setVisible(False)
+        layout.addWidget(self.empty_hint)
+        self.table = QTableWidget()
+        self.table.setColumnCount(3)
+        self.table.setHorizontalHeaderLabels(["Skill Name", "Level (0-100)", "XP Accumulator"])
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        layout.addWidget(self.table)
+        self.btn_max_all.clicked.connect(self.maximize_all_skills)
+        self.btn_set_all0.clicked.connect(self.set_all_skills0)
+        self.btn_add_skill.clicked.connect(self.add_skill)
+        self.btn_add_all_skills.clicked.connect(self.add_all_skills)
 
+    def _build_toolbar(self) -> QHBoxLayout:
         toolbar = QHBoxLayout()
         self.btn_max_all = QPushButton("Maximize All (Lvl 100)")
         self.btn_set_all0 = QPushButton("Set All to 0")
@@ -42,25 +60,7 @@ class SkillsTab(QWidget):
         toolbar.addWidget(self.add_skill_combo)
         toolbar.addWidget(self.btn_add_skill)
         toolbar.addWidget(self.btn_add_all_skills)
-        layout.addLayout(toolbar)
-
-        self.empty_hint = QLabel(
-            "This character has no skills yet, which is how the game writes a brand-new character. "
-            "Use Add Skill for one skill, or Add All Skills to start every vanilla skill at level 0."
-        )
-        self.empty_hint.setWordWrap(True)
-        self.empty_hint.setVisible(False)
-        layout.addWidget(self.empty_hint)
-
-        self.table = QTableWidget()
-        self.table.setColumnCount(3)
-        self.table.setHorizontalHeaderLabels(["Skill Name", "Level (0-100)", "XP Accumulator"])
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        layout.addWidget(self.table)
-        self.btn_max_all.clicked.connect(self.maximize_all_skills)
-        self.btn_set_all0.clicked.connect(self.set_all_skills0)
-        self.btn_add_skill.clicked.connect(self.add_skill)
-        self.btn_add_all_skills.clicked.connect(self.add_all_skills)
+        return toolbar
 
     def load_data(self, player_data):
         self.tracker.clear()

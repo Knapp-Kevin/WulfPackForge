@@ -67,80 +67,37 @@ def build_save_health_report(
     payload_supported: bool = True,
 ) -> SaveHealthReport:
     source = (source or "Local file").strip() or "Local file"
+    common = dict(save_version=version, source=source, modified_at=modified_at,
+                  catalog_game_version=catalog_game_version, backup_path=backup_path)
 
     if not valid:
         detail = "This file failed strict verification and is not available for editing."
         if error:
             detail += f" {error}"
-        return SaveHealthReport(
-            state=SAVE_STATE_NEEDS_ATTENTION,
-            verification_ok=False,
-            writable=False,
-            save_version=version,
-            source=source,
-            modified_at=modified_at,
-            catalog_game_version=catalog_game_version,
-            detail=detail,
-            error=error,
-            backup_path=backup_path,
-            source_changed=source_changed,
-        )
-
+        return SaveHealthReport(state=SAVE_STATE_NEEDS_ATTENTION, verification_ok=False, writable=False,
+                                detail=detail, error=error, source_changed=source_changed, **common)
     if source_changed:
         return SaveHealthReport(
-            state=SAVE_STATE_NEEDS_ATTENTION,
-            verification_ok=True,
-            writable=False,
-            save_version=version,
-            source=source,
-            modified_at=modified_at,
-            catalog_game_version=catalog_game_version,
-            detail=(
-                "The active character file changed outside Wulfpack Forge after it was opened. "
-                "Reload the character before applying changes so a newer Steam, Valheim, or external edit is not overwritten."
-            ),
-            error="External source change detected",
-            backup_path=backup_path,
-            source_changed=True,
-        )
-
+            state=SAVE_STATE_NEEDS_ATTENTION, verification_ok=True, writable=False,
+            detail=("The active character file changed outside Wulfpack Forge after it was opened. "
+                    "Reload the character before applying changes so a newer Steam, Valheim, or external edit is not overwritten."),
+            error="External source change detected", source_changed=True, **common)
     if version not in SUPPORTED_CHARACTER_SAVE_VERSIONS or not payload_supported:
-        version_text = "unknown" if version is None else str(version)
-        if version in SUPPORTED_CHARACTER_SAVE_VERSIONS:
-            reason = "the player data inside it uses a layout version outside"
-        else:
-            reason = f"save version {version_text} is outside"
         return SaveHealthReport(
-            state=SAVE_STATE_COMPATIBILITY_UNVERIFIED,
-            verification_ok=True,
-            writable=False,
-            save_version=version,
-            source=source,
-            modified_at=modified_at,
-            catalog_game_version=catalog_game_version,
-            detail=(
-                f"Checksum and structure verified, but {reason} "
-                "the current write-validated set. You can inspect the character, but Save Changes "
-                "is disabled until compatibility is validated."
-            ),
-            error=None,
-            backup_path=backup_path,
-            source_changed=False,
-        )
-
+            state=SAVE_STATE_COMPATIBILITY_UNVERIFIED, verification_ok=True, writable=False,
+            detail=(f"Checksum and structure verified, but {_compatibility_reason(version)} "
+                    "the current write-validated set. You can inspect the character, but Save Changes "
+                    "is disabled until compatibility is validated."),
+            error=None, source_changed=False, **common)
     return SaveHealthReport(
-        state=SAVE_STATE_VERIFIED,
-        verification_ok=True,
-        writable=True,
-        save_version=version,
-        source=source,
-        modified_at=modified_at,
-        catalog_game_version=catalog_game_version,
-        detail=(
-            f"Checksum and structure verified. Save version {version} is in the current "
-            "write-validated set. Wulfpack Forge keeps a protected workspace snapshot before edits are applied."
-        ),
-        error=None,
-        backup_path=backup_path,
-        source_changed=False,
-    )
+        state=SAVE_STATE_VERIFIED, verification_ok=True, writable=True,
+        detail=(f"Checksum and structure verified. Save version {version} is in the current "
+                "write-validated set. Wulfpack Forge keeps a protected workspace snapshot before edits are applied."),
+        error=None, source_changed=False, **common)
+
+
+def _compatibility_reason(version: Optional[int]) -> str:
+    if version in SUPPORTED_CHARACTER_SAVE_VERSIONS:
+        return "the player data inside it uses a layout version outside"
+    version_text = "unknown" if version is None else str(version)
+    return f"save version {version_text} is outside"

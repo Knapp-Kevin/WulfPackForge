@@ -43,13 +43,22 @@ class NewCharacterDialog(QDialog):
         outer.addLayout(layout, 1)
         self.preview = AppearancePreview()
         outer.addWidget(self.preview, 0, Qt.AlignTop)
+        self._build_identity_rows(layout)
+        self._build_appearance_rows(layout)
+        layout.addRow(QLabel("The character starts as the game creates it: a torch and a rag tunic, no skills yet."))
+        self.buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self.buttons.button(QDialogButtonBox.Ok).setEnabled(False)
+        layout.addRow(self.buttons)
+        self._connect()
+        self._validate(self.name_input.text())
+
+    def _build_identity_rows(self, layout):
         self.name_input = QLineEdit()
         self.name_input.setPlaceholderText("3 to 15 letters or digits")
         self.name_error = QLabel()
         self.name_error.setStyleSheet("color: #ee9b96;")
         layout.addRow("Name:", self.name_input)
         layout.addRow("", self.name_error)
-
         folder_row = QHBoxLayout()
         self.folder_combo = QComboBox()
         self.folder_combo.setEditable(False)
@@ -60,6 +69,7 @@ class NewCharacterDialog(QDialog):
         folder_row.addWidget(self.btn_browse)
         layout.addRow("Save folder:", folder_row)
 
+    def _build_appearance_rows(self, layout):
         self.model_combo = QComboBox()
         self.model_combo.addItem("Male (Model 0)", 0)
         self.model_combo.addItem("Female (Model 1)", 1)
@@ -76,11 +86,7 @@ class NewCharacterDialog(QDialog):
         self.skin_preview, self.btn_skin = self._colour_row(layout, "Skin Tone:", self.skin_color)
         self.hair_preview, self.btn_hair = self._colour_row(layout, "Hair/Beard Color:", self.hair_color)
 
-        layout.addRow(QLabel("The character starts as the game creates it: a torch and a rag tunic, no skills yet."))
-        self.buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        self.buttons.button(QDialogButtonBox.Ok).setEnabled(False)
-        layout.addRow(self.buttons)
-
+    def _connect(self):
         self.name_input.textChanged.connect(self._validate)
         self.btn_browse.clicked.connect(self._browse)
         self.btn_skin.clicked.connect(lambda: self._pick(self.skin_color, self.skin_preview, "Select Skin Color"))

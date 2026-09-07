@@ -102,20 +102,25 @@ def candidate_character_directories(
     candidates: List[tuple[Path, str]] = [
         (path, "Local") for path in _local_save_roots(home, system_name)
     ]
-
     for userdata_root in _existing_directories(_steam_userdata_roots(home, system_name)):
-        try:
-            account_dirs = [path for path in userdata_root.iterdir() if path.is_dir()]
-        except OSError:
-            continue
+        candidates.extend(_steam_character_dirs(userdata_root))
+    return _unique_existing_dirs(candidates)
 
-        for account_dir in account_dirs:
-            remote = account_dir / VALHEIM_APP_ID / "remote"
-            candidates.extend([
-                (remote / "characters", "Steam Cloud (local copy)"),
-                (remote / "characters_local", "Steam local copy"),
-            ])
 
+def _steam_character_dirs(userdata_root: Path) -> List[tuple[Path, str]]:
+    try:
+        account_dirs = [path for path in userdata_root.iterdir() if path.is_dir()]
+    except OSError:
+        return []
+    found = []
+    for account_dir in account_dirs:
+        remote = account_dir / VALHEIM_APP_ID / "remote"
+        found.append((remote / "characters", "Steam Cloud (local copy)"))
+        found.append((remote / "characters_local", "Steam local copy"))
+    return found
+
+
+def _unique_existing_dirs(candidates: List[tuple[Path, str]]) -> List[tuple[Path, str]]:
     found = []
     seen = set()
     for path, source in candidates:
@@ -164,22 +169,28 @@ def discover_character_saves(
 ) -> List[CharacterSave]:
     results = []
     seen_files = set()
-
     for directory, source in candidate_character_directories(home, system_name):
-        try:
-            files = directory.glob("*.fch")
-            for path in files:
-                try:
-                    resolved = path.resolve()
-                except OSError:
-                    continue
-                key = os.path.normcase(str(resolved))
-                if key in seen_files or not resolved.is_file():
-                    continue
-                seen_files.add(key)
-                results.append(inspect_character_save(resolved, source))
-        except OSError:
-            continue
-
+        for resolved in _character_files(directory):
+            key = os.path.normcase(str(resolved))
+            if key in seen_files:
+                continue
+            seen_files.add(key)
+            results.append(inspect_character_save(resolved, source))
     results.sort(key=lambda item: (not item.valid, -item.modified_at, item.name.lower()))
     return results
+
+
+def _character_files(directory: Path) -> List[Path]:
+    """Resolved ``.fch`` files in a directory; unreadable directories or entries are skipped."""
+    found = []
+    try:
+        for path in directory.glob("*.fch"):
+            try:
+                resolved = path.resolve()
+            except OSError:
+                continue
+            if resolved.is_file():
+                found.append(resolved)
+    except OSError:
+        return found
+    return found
