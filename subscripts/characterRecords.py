@@ -217,10 +217,15 @@ def discover_character_records(home: Optional[Path] = None, system_name: Optiona
     return build_records(scan_states(home, system_name, workspace_root))
 
 
+def _canonical(path: str) -> str:
+    """Case-folded real path; resolves Windows 8.3 short names so the same file always compares equal."""
+    return os.path.normcase(os.path.realpath(path))
+
+
 def find_state(records: Iterable[CharacterRecord], path: str) -> Optional[Tuple[CharacterRecord, CharacterState]]:
-    wanted = os.path.normcase(os.path.abspath(path))
+    wanted = _canonical(path)
     for record in records:
         for state in record.states:
-            if os.path.normcase(os.path.abspath(state.path)) == wanted:
+            if _canonical(state.path) == wanted:
                 return record, state
     return None

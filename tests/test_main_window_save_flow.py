@@ -1,4 +1,5 @@
 import os
+import os
 import tempfile
 import unittest
 from contextlib import ExitStack
@@ -98,7 +99,7 @@ class MainWindowSaveFlowTests(unittest.TestCase):
         backup = write_fch(self.save_dir / "hero_backup_auto-20260101.fch", older)
         self.window.load_save_file(str(backup), apply_to=str(self.source))
         self.assertIn("Restoring", self.window.file_label.text())
-        self.assertEqual(self.window.current_fch, str(self.source.resolve()))
+        self.assertEqual(os.path.realpath(self.window.current_fch), os.path.realpath(self.source))
         self.assertEqual(self.source.read_bytes(), self.original)  # nothing written yet
         self.window.save_save_file()
         self.assertEqual(RecordingMessageBox.calls[-1][0], "info")
