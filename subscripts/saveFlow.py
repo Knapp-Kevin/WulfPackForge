@@ -1,8 +1,11 @@
 """Filesystem helpers for the Save Changes flow; the policy stays in the main window."""
+import logging
 import os
 import shutil
 import tempfile
 from typing import Iterable
+
+logger = logging.getLogger(__name__)
 
 EXTERNAL_CHANGE_MARKERS = ("changed after it was opened", "disappeared after it was opened")
 
@@ -22,8 +25,8 @@ def remove_quietly(paths: Iterable[str]) -> None:
         if path and os.path.exists(path):
             try:
                 os.remove(path)
-            except OSError:
-                pass
+            except OSError as exc:
+                logger.warning("Could not remove temporary file %s: %s", path, exc)
 
 
 def mtime_or_none(path):

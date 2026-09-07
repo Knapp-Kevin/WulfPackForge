@@ -1,23 +1,23 @@
 import copy
+import logging
 import os
-import tempfile  # noqa: F401  (patched by the save-flow tests; used through ui.saveFlow)
+import tempfile  # noqa: F401  (patched by the save-flow tests; used through subscripts.saveFlow)
 
-from PySide6.QtWidgets import *
-
+from PySide6.QtWidgets import (QDialog, QFileDialog, QHBoxLayout, QLabel, QMainWindow, QMessageBox,
+                               QPushButton, QTabWidget, QVBoxLayout, QWidget)
 from ui.inventoryTab import InventoryTab
 from ui.skillsTab import SkillsTab
 from ui.statsTab import StatsTab
 from ui.appearanceTab import AppearanceTab
 from ui.miscTab import MiscTab
 from ui.saveStatusWidget import SaveStatusWidget
-from ui.valheim_detection import ScanState, ValheimScan, scan_valheim, valheim_warning_message
+from subscripts.valheim_detection import ScanState, ValheimScan, scan_valheim, valheim_warning_message
 from ui.branding import APP_WINDOW_TITLE
 from ui.brandBanner import BANNER_MAX_HEIGHT, BANNER_MIN_HEIGHT, BrandBanner, banner_height_for  # noqa: F401
 from ui.characterPicker import CharacterPickerBar
 from ui.newCharacterDialog import NewCharacterDialog
-from ui.saveFlow import looks_like_external_change, mtime_or_none, remove_quietly, stage_candidate
+from subscripts.saveFlow import looks_like_external_change, mtime_or_none, remove_quietly, stage_candidate
 from ui import messages
-
 from subscripts.characterDiscovery import discover_character_saves
 from subscripts.fchUtil import serialize_save, write_fch_bytes
 from subscripts.newCharacter import create_character_file, root_from_spec
@@ -27,9 +27,10 @@ from subscripts.saveSafety import replace_verified_save, verify_fch_round_trip
 from subscripts.workspace import SourceChangedError, create_workspace_session, store_verified_working_copy
 from subscripts.playerDataUtil import pack_player_data_hex, payload_is_supported, unpack_player_data_hex
 
-_EMPTY_STATE = dict(root_save=None, opened_root=None, player_data=None, current_fch=None,
-                    current_source="Local file", current_modified_at=None,
-                    current_payload_supported=True, workspace_session=None)
+logger = logging.getLogger(__name__)
+
+_EMPTY_STATE = dict(root_save=None, opened_root=None, player_data=None, current_fch=None, current_source="Local file",
+                    current_modified_at=None, current_payload_supported=True, workspace_session=None)
 
 
 class MainWindow(QMainWindow):
@@ -66,12 +67,8 @@ class MainWindow(QMainWindow):
         scan = scan_valheim()
         if scan.state != ScanState.RUNNING:
             return
-        msg = QMessageBox(self)
-        msg.setWindowTitle("Valheim Running")
-        msg.setText(valheim_warning_message(scan))
+        msg = QMessageBox(QMessageBox.Warning, "Valheim Running", valheim_warning_message(scan), QMessageBox.Ok, self)
         msg.setInformativeText(messages.STARTUP_RUNNING_INFO)
-        msg.setIcon(QMessageBox.Warning)
-        msg.setStandardButtons(QMessageBox.Ok)
         msg.exec()
 
     def _reset_state(self):
@@ -119,7 +116,6 @@ class MainWindow(QMainWindow):
         return report
 
     def create_new_character(self):
-        """Create a fresh character file from in-game defaults, then open it."""
         dialog = NewCharacterDialog(self)
         if dialog.exec() != QDialog.Accepted:
             return
@@ -154,6 +150,7 @@ class MainWindow(QMainWindow):
             session = create_workspace_session(filename, root_save)
             self._adopt_loaded(filename, root_save, player_data, session, source, modified_at)
         except Exception as exc:
+            logger.exception("Could not open character %s", filename)
             self._reject_load(source, modified_at, exc)
 
     def _adopt_loaded(self, filename, root_save, player_data, session, source, modified_at):
@@ -199,7 +196,6 @@ class MainWindow(QMainWindow):
                          modified_at=self.current_modified_at, error=message, source_changed=True)
 
     def save_save_file(self):
-        """Verify a working copy, guard the active source, back it up, and apply changes."""
         if not self.root_save or not self.player_data or not self.workspace_session or not self.current_fch:
             QMessageBox.warning(self, "No Character Loaded", "Open a character before saving changes.")
             return
@@ -210,9 +206,11 @@ class MainWindow(QMainWindow):
         try:
             self._apply_changes(session, temp_paths)
         except SourceChangedError as exc:
+            logger.warning("Save refused: %s", exc)
             self._mark_external_change(str(exc))
             QMessageBox.critical(self, "Character Changed Outside Wulfpack Forge", messages.changed_outside(exc))
         except Exception as exc:
+            logger.exception("Save Changes failed for %s", self.current_fch)
             if looks_like_external_change(str(exc)):
                 self._mark_external_change(str(exc))
             QMessageBox.critical(self, "Changes Were Not Saved", messages.not_saved(exc))

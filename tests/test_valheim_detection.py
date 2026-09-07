@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 import psutil
 
-from ui import valheim_detection as vd
+from subscripts import valheim_detection as vd
 
 
 class FakeProc:

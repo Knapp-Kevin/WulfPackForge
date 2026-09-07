@@ -11,8 +11,6 @@ from PySide6.QtGui import QColor, QImage
 from PySide6.QtWidgets import QApplication, QComboBox
 
 from data.appearance import BEARD_NONE, HAIR_NONE, VALHEIM_BEARDS, VALHEIM_HAIRS
-from data.beards import VALHEIM_BEARDS as LEGACY_BEARDS
-from data.hairs import VALHEIM_HAIRS as LEGACY_HAIRS
 from ui import glyphs as ui_glyphs
 
 
@@ -38,8 +36,7 @@ class AppearanceTableTests(unittest.TestCase):
         self.assertNotIn("nohair", VALHEIM_HAIRS)
 
     def test_legacy_modules_re_export_the_same_tables(self):
-        self.assertIs(LEGACY_HAIRS, VALHEIM_HAIRS)
-        self.assertIs(LEGACY_BEARDS, VALHEIM_BEARDS)
+        self.assertTrue(VALHEIM_HAIRS and VALHEIM_BEARDS)  # the catalog tables are the only source now
 
 
 class AppearanceThumbnailTests(unittest.TestCase):

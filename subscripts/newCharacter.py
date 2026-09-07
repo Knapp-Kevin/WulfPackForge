@@ -5,6 +5,7 @@ Defaults were taken verbatim from two characters created in Valheim on
 embedded; the file is synthesised through the same codec that round-trips
 real saves byte-identical.
 """
+import logging
 import os
 import random
 import re
@@ -37,6 +38,8 @@ class NewCharacterSpec:
     beard: str = ""
     skin_color: List[float] = field(default_factory=lambda: list(DEFAULT_SKIN))
     hair_color: List[float] = field(default_factory=lambda: list(DEFAULT_HAIR_COLOR))
+
+logger = logging.getLogger(__name__)
 
 
 def validate_name(name: str) -> Optional[str]:
@@ -112,6 +115,6 @@ def create_character_file(directory, root: dict) -> Path:
         if temp_path.exists():
             try:
                 os.remove(temp_path)
-            except OSError:
-                pass
+            except OSError as exc:
+                logger.warning("Could not remove temporary file %s: %s", temp_path, exc)
     return target

@@ -14,7 +14,7 @@ from subscripts.saveSafety import verify_fch_round_trip
 from tests.fixture_saves import realistic_player_data, realistic_root_save, write_fch
 from subscripts.playerDataUtil import pack_player_data_hex
 from ui import mainWindow as mw
-from ui.valheim_detection import ScanState, ValheimScan
+from subscripts.valheim_detection import ScanState, ValheimScan
 
 
 APP = QApplication.instance() or QApplication([])

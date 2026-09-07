@@ -2,7 +2,7 @@
 from typing import Dict, List, Optional
 
 from PySide6.QtCore import QSize, Qt
-from PySide6.QtWidgets import QFrame, QGridLayout, QLabel, QWidget
+from PySide6.QtWidgets import QFrame, QGridLayout, QLabel
 
 from data.equipment import hands_for, slot_for
 from data.items import resolve_item

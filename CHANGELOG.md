@@ -56,6 +56,7 @@ The project is currently evolving toward its first branded Wulfpack Forge releas
 - Windows CI smoke coverage for the one-file source launcher.
 
 ### Changed
+- Hardening pass: the main window imports Qt classes explicitly, load and save failures are written to the log as well as shown, and temp-file cleanup failures are logged instead of ignored. The Valheim process scan and the save-flow filesystem helpers moved below the UI layer (`subscripts/`), and the structural test now also refuses star imports and any Qt import outside `ui/`.
 - Internal structure pass under the project's Simplicity Razor: the main window is split into banner, character picker, and save-flow modules, the HDR colour group is its own widget, the binary reader and writer live in `subscripts/binaryIO.py`, and long functions were decomposed. No behaviour changed; a structural test now keeps every file under 250 lines, every function under 40, and nesting at three levels or fewer.
 - Overbright mode now substitutes the standard colour picker instead of sitting beside it: the Pick Skin Color and Pick Hair Color buttons are shown when overbright is off, and the RGB rows and presets take their place when it is on. Swatches and intensity labels stay in both modes.
 - The normal color picker remains limited to standard SDR colors; overbright values are edited only through the explicit advanced controls so ordinary appearance edits stay simple.

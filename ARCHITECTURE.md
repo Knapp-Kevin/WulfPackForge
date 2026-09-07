@@ -42,13 +42,21 @@ Wulfpack Forge does not use a server or remote database for normal operation. Ch
 
 Owns the player-facing desktop experience.
 
-- `mainWindow.py` coordinates discovery, loading, workspace creation, editing, health state, and saving.
+- `mainWindow.py` coordinates loading, workspace creation, editing, health state, and saving; `characterPicker.py` owns discovery and the character row, `brandBanner.py` the banner, `messages.py` the dialog texts.
 - `saveStatusWidget.py` renders compact verification and compatibility state.
 - `branding.py` resolves Wulfpack Forge product metadata and bundled assets.
 - `itemPickerDialog.py` presents the catalog as curated categories (`data/item_groups.py`) with an icon grid and search; `glyphs.py` renders, tints, caches, and validates original inventory glyph masters under `assets/glyphs/items/`, with safe fallback behavior resolved by `data/glyphs.py`.
 - editor tabs own their respective user controls and data mapping.
 
 The UI should not bypass the workspace or save-safety layer.
+
+### `subscripts/valheim_detection.py`
+
+Three-state process scan (running, not running, inconclusive) built on psutil. It has no Qt dependency; the main window imports it and refuses to write while the game runs or while the scan cannot finish.
+
+### `subscripts/saveFlow.py`
+
+Filesystem helpers for Save Changes: staging the verified working copy beside the destination, quiet (but logged) temp-file removal, and external-change detection on error text.
 
 ### `subscripts/characterDiscovery.py`
 

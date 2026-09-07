@@ -10,6 +10,7 @@ MAX_FUNCTION_LINES = 40
 MAX_NESTING = 3
 NESTING_NODES = (ast.If, ast.For, ast.While, ast.With, ast.Try, ast.AsyncFor, ast.AsyncWith)
 SCOPE_NODES = (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda)
+NO_QT_DIRS = ("data", "subscripts")  # the UI layer is the only place PySide6 may appear
 
 
 def source_files():
@@ -46,7 +47,19 @@ def violations_in(path):
                 found.append(f"{rel}:{node.lineno} {node.name} nests {depth} deep (max {MAX_NESTING})")
         if isinstance(node, ast.IfExp) and any(isinstance(part, ast.IfExp) for part in (node.body, node.orelse)):
             found.append(f"{rel}:{node.lineno} nested ternary")
+        if isinstance(node, ast.ImportFrom) and any(alias.name == "*" for alias in node.names):
+            found.append(f"{rel}:{node.lineno} star import from {node.module}")
+        if rel.split("/")[0] in NO_QT_DIRS and _imports_qt(node):
+            found.append(f"{rel}:{node.lineno} PySide6 import below the UI layer")
     return found
+
+
+def _imports_qt(node) -> bool:
+    if isinstance(node, ast.ImportFrom):
+        return bool(node.module and node.module.startswith("PySide6"))
+    if isinstance(node, ast.Import):
+        return any(alias.name.startswith("PySide6") for alias in node.names)
+    return False
 
 
 def razor_violations():
