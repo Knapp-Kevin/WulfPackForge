@@ -24,6 +24,14 @@ class PlayerDataCodecTests(unittest.TestCase):
         self.assertEqual(data["inventory"][2]["grid_y"], 7)
         self.assertEqual(data["custom_data"], {"SomeMod.key": "value"})
 
+    def test_hdr_appearance_floats_round_trip_without_normalising(self):
+        data = unpack_player_data_hex(realistic_player_hex())
+        data["skin_color"] = [2.0, 4.0, 8.0]
+        data["hair_color"] = [0.5, 2.5, 10.0]
+        reparsed = unpack_player_data_hex(pack_player_data_hex(data))
+        self.assertEqual(reparsed["skin_color"], [2.0, 4.0, 8.0])
+        self.assertEqual(reparsed["hair_color"], [0.5, 2.5, 10.0])
+
     def test_trailing_bytes_raise_save_format_error(self):
         payload = realistic_player_hex() + (b"\xde\xad\xbe\xef" * 4).hex()
         with self.assertRaises(SaveFormatError) as ctx:

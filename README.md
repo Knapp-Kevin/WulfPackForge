@@ -54,13 +54,29 @@ Inventory editing combines the familiar character grid with original item-catego
 
 | Area | Capabilities |
 |---|---|
-| Appearance | Skin color, hair color, beard color, hair style, beard style, and supported model settings |
+| Appearance | Skin color, shared hair/beard color, hair style, beard style, supported model settings, plus guarded HDR/overbright RGB editing from 0.0 through 10.0 |
 | Inventory | Categorised item picker with search and original tinted glyphs, raw prefab entry for modded items, stacks, durability, quality, variants, equipped state |
 | Skills | Supported Valheim skill levels |
 | Stats | Supported health, stamina, progression, and related character values |
 | Character details | Supported character-level fields such as name |
 
 Known vanilla items use human-readable names and an appropriate original silhouette while retaining their prefab IDs. Unknown, modded, or newer-version items are preserved and receive a neutral fallback glyph rather than being rejected simply because the bundled catalog does not recognize them.
+
+## Advanced HDR / overbright appearance colors
+
+Normal appearance editing stays deliberately simple: the standard color picker writes ordinary `0.0` through `1.0` RGB values. For players who intentionally want brighter values, the Appearance tab includes an explicit **Advanced HDR / Overbright Colors** mode for skin and the shared hair/beard color.
+
+The advanced controls are guarded rather than silently widening every color picker:
+
+- **Overbright is opt-in.** Values above `1.0` can only be entered after enabling the advanced checkbox.
+- **Negative values are prohibited.** Every RGB component has a hard minimum of `0.0`; Wulfpack Forge will not create underbright/negative color values.
+- **The supported editing range is `0.0` through `10.0`.** This allows experimentation without exposing unbounded float input.
+- **Presets preserve hue.** `Normal 1×`, `Bright 2×`, `Glow 4×`, and `Extreme 8×` rescale the selected skin, hair/beard, or both while retaining the original RGB proportions.
+- **Extreme values are called out.** Values above `4.0` show a stronger warning because they may bloom heavily, wash out the model, or render poorly in-game.
+- **Existing overbright characters are preserved.** If a loaded character already contains values above `1.0`, Wulfpack Forge enables the advanced surface automatically and round-trips those floats without clamping them back into the ordinary range.
+- **The preview is intentionally honest.** A normal desktop swatch cannot represent HDR intensity, so the swatch shows the hue while a separate label displays the actual stored peak intensity.
+
+Wulfpack Forge writes these appearance values as the same floating-point RGB fields already present in Valheim character data. The editor can preserve and write overbright values, but the final visual result still depends on how the current Valheim material/shader handles those values for skin, hair, and beard. The feature therefore describes the stored data accurately without promising that every value produces a particular amount of visible glow in every game build.
 
 ## Character discovery and Steam Cloud
 
@@ -217,6 +233,7 @@ Automated coverage currently includes:
 - catalog resolution and duplicate-name behavior;
 - unknown/modded item preservation;
 - inventory glyph mapping, fallback, tinting, decoding, and transparency;
+- guarded HDR/overbright appearance controls, negative-value prevention, preset behavior, and unclamped round-trip preservation;
 - offscreen Qt widget behavior;
 - Wulfpack Forge branding identity and decodable runtime asset validation;
 - Python source compilation;
