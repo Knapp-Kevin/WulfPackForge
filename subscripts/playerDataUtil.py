@@ -4,7 +4,10 @@
 payload. Strings use ``surrogateescape`` so non-UTF-8 bytes survive, and the
 reader refuses to return a payload that still has unconsumed bytes.
 """
-from subscripts.fchUtil import BinaryReader, BinaryWriter, STRING_ERRORS  # noqa: F401 (STRING_ERRORS re-exported)
+from subscripts.fchUtil import BinaryReader, BinaryWriter, STRING_ERRORS
+
+__all__ = ["BinaryReader", "BinaryWriter", "STRING_ERRORS", "PlayerDataReader", "PlayerDataWriter",
+           "SUPPORTED_PLAYER_DATA_VERSIONS", "payload_is_supported", "unpack_player_data_hex", "pack_player_data_hex"]
 
 # (version, inventory_version, skill_version) triples whose layout this codec
 # reads exactly. Any other triple parses on a best-effort basis but is not writable.

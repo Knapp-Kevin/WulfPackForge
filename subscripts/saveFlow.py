@@ -34,6 +34,3 @@ def mtime_or_none(path):
     except OSError:
         return None
 
-
-def looks_like_external_change(message: str) -> bool:
-    return any(marker in message for marker in EXTERNAL_CHANGE_MARKERS)

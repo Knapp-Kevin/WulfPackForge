@@ -10,12 +10,11 @@ from PySide6.QtWidgets import (
     QLabel,
 )
 from PySide6.QtCore import QSize
-from PySide6.QtGui import QPalette
 from data.appearance import BEARD_NONE, HAIR_NONE, VALHEIM_BEARDS, VALHEIM_HAIRS, display_key
 from ui.fieldTracker import FieldTracker, select_or_add_unknown
 from ui.appearancePreview import AppearancePreview, ColorSwatch
 from ui.glyphs import populate_appearance_combo
-from ui.hdrColorControls import (  # noqa: F401  (constants re-exported for callers)
+from ui.hdrColorControls import (
     EXTREME_HDR_THRESHOLD,
     MAX_HDR_COMPONENT,
     HdrColorControls,
@@ -28,6 +27,7 @@ from ui.hdrColorControls import (  # noqa: F401  (constants re-exported for call
 )
 
 COMBO_ICON = QSize(72, 72)
+__all__ = ["AppearanceTab", "EXTREME_HDR_THRESHOLD", "MAX_HDR_COMPONENT"]
 
 
 class AppearanceTab(QWidget):

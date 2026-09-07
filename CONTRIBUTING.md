@@ -25,6 +25,15 @@ Run the automated suite with:
 python -m unittest discover -s tests -v
 ```
 
+Install the development tools and lint with:
+
+```bash
+python -m pip install -r requirements-dev.txt
+python -m pyflakes main.py data subscripts ui tools tests
+```
+
+CI also runs the suite under `coverage` and fails below 85 percent line coverage of `data`, `subscripts`, `ui`, and `main.py`.
+
 Compile-check the Python sources with:
 
 ```bash

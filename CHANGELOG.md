@@ -7,6 +7,7 @@ The project is currently evolving toward its first branded Wulfpack Forge releas
 ## Unreleased
 
 ### Fixed
+- Three defensive lifetime fixes found while chasing an intermittent test-suite crash: the banner's settle timer is owned by the banner, the character list stops its background scan when the window closes, and the appearance preview builds its images as Qt-owned copies rather than views over Python buffers. The crash itself was the test harness freeing windows at arbitrary times; test windows are now torn down deterministically.
 - An intermittent crash while opening dialogs: widget signals were connected through lambdas that captured the widget, so Python freed the widget at an arbitrary garbage-collection point instead of deterministically. Every connection now targets a bound method, and the structural test refuses the old pattern.
 - With no character loaded, the editor tabs are disabled and the status line says to open or create a character. Previously the Inventory tab showed an empty grid whose picker and editor opened but could not add anything, and the failure was silent. Inventory actions now refuse cleanly without a character, and any error that escapes the interface is written to the log file.
 - Overbright colours now keep their hue in the head preview and the colour swatches instead of washing to white: the display colour is the stored colour scaled to its peak, and the multiplier shows as a glow (faint at 2×, strong at 8×). Stored values are unchanged.
@@ -66,6 +67,7 @@ The project is currently evolving toward its first branded Wulfpack Forge releas
 - The Stats tab. Health, stamina, eitr, active foods, guardian power, and the cheat flag are no longer editable; Wulfpack Forge is a character editor, not a cheat panel, and Valheim recalculates the vitals from food anyway. All of those fields still pass through untouched when you save.
 
 ### Changed
+- CI now lints with pyflakes and enforces an 85 percent coverage floor (`requirements-dev.txt` holds the tools). The `fchUtil.py` command line logs an unknown mode through the logger and prints only its usage text.
 - Character discovery runs off the interface thread. The list shows "Scanning for characters…" while it works, the window stays responsive with large save libraries or slow disks, and a refresh requested mid-scan runs once more when the scan finishes.
 - The README records that characters created and edited with Wulfpack Forge have been loaded and played in Valheim 0.221.12.
 - Hardening pass: the main window imports Qt classes explicitly, load and save failures are written to the log as well as shown, and temp-file cleanup failures are logged instead of ignored. The Valheim process scan and the save-flow filesystem helpers moved below the UI layer (`subscripts/`), and the structural test now also refuses star imports and any Qt import outside `ui/`.

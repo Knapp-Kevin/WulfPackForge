@@ -10,7 +10,7 @@ from PySide6.QtWidgets import QApplication
 
 import subscripts.characterRecords as records_module
 from subscripts.characterRecords import (
-    StateCache, build_records, classify_path, discover_character_records, find_state, scan_states,
+    StateCache, classify_path, discover_character_records, find_state, scan_states,
 )
 from subscripts.workspace import create_workspace_session
 from tests.fixture_saves import realistic_root_save, write_fch

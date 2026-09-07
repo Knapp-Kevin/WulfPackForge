@@ -1,7 +1,6 @@
 import copy
 import logging
 import os
-import tempfile  # noqa: F401  (patched by the save-flow tests; used through subscripts.saveFlow)
 
 from PySide6.QtWidgets import (QDialog, QFileDialog, QHBoxLayout, QLabel, QMainWindow, QMessageBox,
                                QPushButton, QTabWidget, QVBoxLayout, QWidget)
@@ -12,7 +11,7 @@ from ui.miscTab import MiscTab
 from ui.saveStatusWidget import SaveStatusWidget
 from subscripts.valheim_detection import ScanState, ValheimScan, scan_valheim, valheim_warning_message
 from ui.branding import APP_WINDOW_TITLE
-from ui.brandBanner import BANNER_MAX_HEIGHT, BANNER_MIN_HEIGHT, BrandBanner, banner_height_for  # noqa: F401
+from ui.brandBanner import BANNER_MAX_HEIGHT, BANNER_MIN_HEIGHT, BrandBanner, banner_height_for
 from ui.characterPicker import CharacterPickerBar
 from ui.newCharacterDialog import NewCharacterDialog
 from subscripts.saveFlow import mtime_or_none, remove_quietly, stage_candidate
@@ -27,6 +26,7 @@ from subscripts.workspace import SourceChangedError, WorkspaceError, create_work
 from subscripts.playerDataUtil import pack_player_data_hex, payload_is_supported, unpack_player_data_hex
 
 logger = logging.getLogger(__name__)
+__all__ = ["MainWindow", "BANNER_MAX_HEIGHT", "BANNER_MIN_HEIGHT", "banner_height_for"]
 
 _EMPTY_STATE = dict(root_save=None, opened_root=None, player_data=None, current_fch=None, current_source="Local file",
                     current_modified_at=None, current_payload_supported=True, workspace_session=None)
@@ -61,7 +61,7 @@ class MainWindow(QMainWindow):
         self._set_loaded(False)
 
         self.picker.open_requested.connect(self.load_save_file)
-        self.picker.restore_requested.connect(self.restore_state)
+        self.picker.restore_requested.connect(self.load_save_file)  # (state path, head path)
         self.picker.new_requested.connect(self.create_new_character)
         self.refresh_discovered_characters()
 
@@ -75,6 +75,10 @@ class MainWindow(QMainWindow):
 
     def _reset_state(self):
         self.__dict__.update(_EMPTY_STATE)
+
+    def closeEvent(self, event):
+        self.picker.shutdown()
+        super().closeEvent(event)
 
     def _set_loaded(self, loaded: bool, text: str = ""):
         self.tabs.setEnabled(loaded)
@@ -135,9 +139,6 @@ class MainWindow(QMainWindow):
         filename, _ = QFileDialog.getOpenFileName(self, "Open Valheim Character Save", initial_dir, "Valheim Character (*.fch)")
         if filename:
             self.load_save_file(filename)
-
-    def restore_state(self, state_path, head_path):
-        self.load_save_file(state_path, apply_to=head_path)
 
     def load_save_file(self, filename, apply_to=None):
         target = apply_to or filename

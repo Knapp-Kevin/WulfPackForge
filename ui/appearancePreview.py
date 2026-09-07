@@ -92,7 +92,11 @@ def _split(source: QImage) -> Tuple[QImage, QImage, Tuple[int, int, int]]:
             left, right, bottom = min(left, x), max(right, x), max(bottom, y)
 
     def to_image(buf: bytearray) -> QImage:
-        return QImage(bytes(buf), width, height, stride, QImage.Format_ARGB32).copy()
+        # Copy into a Qt-owned image: constructing a QImage over a Python buffer leaves Qt with a
+        # pointer into memory Python may free, which corrupts the heap silently.
+        image = QImage(width, height, QImage.Format_ARGB32)
+        image.bits()[:len(buf)] = bytes(buf)
+        return image
 
     return to_image(head), to_image(hair), (left, right, bottom)
 
@@ -161,7 +165,6 @@ def _draw_beard(painter, hair_key, beard_key, color, peak, size):
     beard_layer = tint_pixmap(split_layers("beard", beard_key, size)[1], color)
     scale, dx, dy = beard_transform(hair_key, beard_key, size)
     painter.setRenderHint(QPainter.SmoothPixmapTransform)
-    source = QRectF(0, 0, beard_layer.width(), beard_layer.height())
     fitted = beard_layer.scaled(int(beard_layer.width() * scale), int(beard_layer.height() * scale),
                                 Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
     painter.drawPixmap(QRectF(dx, dy, fitted.width(), fitted.height()), fitted, QRectF(0, 0, fitted.width(), fitted.height()))
