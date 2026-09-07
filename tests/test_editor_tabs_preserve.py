@@ -148,6 +148,26 @@ class AppearanceTabPreserveTests(unittest.TestCase):
             if key != "skin_color":
                 self.assertEqual(data[key], baseline[key], key)
 
+    def test_overbright_mode_substitutes_the_picker(self):
+        tab = AppearanceTab()
+        tab.load_data(loaded_player_data())
+        self.assertTrue(tab.btn_skin_color.isVisibleTo(tab))
+        self.assertTrue(tab.btn_hair_color.isVisibleTo(tab))
+        self.assertFalse(tab.hdr_controls.isVisibleTo(tab))
+
+        tab.overbright_checkbox.setChecked(True)
+        self.assertFalse(tab.btn_skin_color.isVisibleTo(tab))
+        self.assertFalse(tab.btn_hair_color.isVisibleTo(tab))
+        self.assertTrue(tab.hdr_controls.isVisibleTo(tab))
+        self.assertTrue(tab.skin_intensity_label.isVisibleTo(tab))
+
+        data = loaded_player_data()
+        data["hair_color"] = [1.0, 2.0, 4.0]
+        loaded_hdr = AppearanceTab()
+        loaded_hdr.load_data(data)
+        self.assertTrue(loaded_hdr.hdr_controls.isVisibleTo(loaded_hdr))
+        self.assertFalse(loaded_hdr.btn_hair_color.isVisibleTo(loaded_hdr))
+
     def test_hdr_controls_are_opt_in_and_negative_values_are_prohibited(self):
         tab = AppearanceTab()
         data = loaded_player_data()

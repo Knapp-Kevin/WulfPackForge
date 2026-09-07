@@ -148,8 +148,12 @@ class AppearanceTab(QWidget):
         self.hdr_help_label.setWordWrap(True)
         hdr_layout.addWidget(self.hdr_help_label)
 
-        self.skin_hdr_spins = self._build_hdr_row(hdr_layout, "Skin RGB:")
-        self.hair_hdr_spins = self._build_hdr_row(hdr_layout, "Hair/Beard RGB:")
+        # The RGB rows and presets replace the SDR picker buttons while overbright mode is on.
+        self.hdr_controls = QWidget()
+        controls_layout = QVBoxLayout(self.hdr_controls)
+        controls_layout.setContentsMargins(0, 0, 0, 0)
+        self.skin_hdr_spins = self._build_hdr_row(controls_layout, "Skin RGB:")
+        self.hair_hdr_spins = self._build_hdr_row(controls_layout, "Hair/Beard RGB:")
 
         preset_row = QHBoxLayout()
         self.preset_target_combo = QComboBox()
@@ -164,7 +168,8 @@ class AppearanceTab(QWidget):
         self.btn_preset_extreme = QPushButton("Extreme 8×")
         for button in (self.btn_preset_normal, self.btn_preset_bright, self.btn_preset_glow, self.btn_preset_extreme):
             preset_row.addWidget(button)
-        hdr_layout.addLayout(preset_row)
+        controls_layout.addLayout(preset_row)
+        hdr_layout.addWidget(self.hdr_controls)
 
         self.hdr_warning_label = QLabel()
         self.hdr_warning_label.setWordWrap(True)
@@ -196,6 +201,9 @@ class AppearanceTab(QWidget):
         return [min(MAX_HDR_COMPONENT, max(0.0, float(component))) for component in values]
 
     def _update_hdr_enabled(self, enabled):
+        self.hdr_controls.setVisible(enabled)
+        self.btn_skin_color.setVisible(not enabled)
+        self.btn_hair_color.setVisible(not enabled)
         for spin in self.skin_hdr_spins + self.hair_hdr_spins:
             spin.setEnabled(enabled)
         for button in (self.btn_preset_bright, self.btn_preset_glow, self.btn_preset_extreme):

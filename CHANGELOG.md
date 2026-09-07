@@ -54,6 +54,7 @@ The project is currently evolving toward its first branded Wulfpack Forge releas
 - Windows CI smoke coverage for the one-file source launcher.
 
 ### Changed
+- Overbright mode now substitutes the standard colour picker instead of sitting beside it: the Pick Skin Color and Pick Hair Color buttons are shown when overbright is off, and the RGB rows and presets take their place when it is on. Swatches and intensity labels stay in both modes.
 - The normal color picker remains limited to standard SDR colors; overbright values are edited only through the explicit advanced controls so ordinary appearance edits stay simple.
 - Character-save versions 40 through 43 are now write-validated (previously only 43), based on byte-identical round trips of real saves of each version; the player-data layout is still checked separately.
 - `Save Changes` now applies edits to the active loaded character through the managed workspace safety path rather than asking the player to choose the destination again.
