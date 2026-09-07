@@ -13,6 +13,11 @@ The project is currently evolving toward its first branded Wulfpack Forge releas
 - The `fchUtil.py` command-line `unpack` mode works again.
 
 ### Added
+- Guarded **Advanced HDR / Overbright Colors** controls for skin and shared hair/beard color floats, with explicit opt-in before entering values above 1.0.
+- RGB float controls from `0.0` through `10.0`; negative/underbright values are prohibited at the widget boundary.
+- Hue-preserving Normal 1×, Bright 2×, Glow 4×, and Extreme 8× appearance intensity presets, selectable for skin, hair/beard, or both.
+- Inline HDR intensity labels plus warnings for overbright values and stronger warnings above 4.0, where bloom/washout may become extreme in-game.
+- Regression coverage proving valid overbright values are preserved without clamping and existing overbright characters round-trip unchanged.
 - A categorised item picker for adding inventory items: curated groups on the left, an icon grid with search on the right, and an Advanced tab for raw modded prefabs.
 - An original 23-piece in-app inventory glyph set with item-aware silhouettes, runtime material tinting, a neutral unknown-item fallback, and a live preview in the item editor.
 - Objective runtime and packaged-smoke validation for the complete inventory glyph bundle, plus committed SHA-256 asset hashes.
@@ -32,6 +37,7 @@ The project is currently evolving toward its first branded Wulfpack Forge releas
 - Windows CI smoke coverage for the one-file source launcher.
 
 ### Changed
+- The normal color picker remains limited to standard SDR colors; overbright values are edited only through the explicit advanced controls so ordinary appearance edits stay simple.
 - Character-save versions 40 through 43 are now write-validated (previously only 43), based on byte-identical round trips of real saves of each version; the player-data layout is still checked separately.
 - `Save Changes` now applies edits to the active loaded character through the managed workspace safety path rather than asking the player to choose the destination again.
 - Backups created during normal editing are kept under the character's Wulfpack Forge workspace instead of cluttering the active Valheim character directory.
