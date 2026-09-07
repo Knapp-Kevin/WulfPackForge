@@ -12,7 +12,7 @@
   <a href="LICENSE"><img alt="License: GPLv3" src="https://img.shields.io/badge/license-GPLv3-blue.svg"></a>
 </p>
 
-Wulfpack Forge is a player-first desktop editor for Valheim character saves. It is designed for the person who wants to change a beard, hair color, inventory item, skill, or stat without learning Python, searching obscure save folders, or gambling a character file on a direct overwrite.
+Wulfpack Forge is a player-first desktop editor for Valheim character saves. It is designed for the person who wants to change a beard, hair color, inventory item, or skill without learning Python, searching obscure save folders, or gambling a character file on a direct overwrite.
 
 Once the first public Windows release is published, the intended player path is deliberately simple: download the Windows build, open a character that exists locally, make changes, and click **Save Changes**. Underneath that workflow, Wulfpack Forge verifies save structure and checksums, creates a protected workspace snapshot and working copy, detects outside changes to the active character, blocks writes while Valheim is running, backs up the active save, and only replaces it after the edited candidate passes validation.
 
@@ -61,7 +61,6 @@ Known equipment is edited against its quality-based durability maximum, while un
 | Appearance | Skin color, shared hair/beard color, hair style, beard style, supported model settings, a live head preview that updates as you choose, plus guarded HDR/overbright RGB editing from 0.0 through 10.0 |
 | Inventory | Large illustrated grid with stack and quality badges, drag-and-drop to move or swap items, and an Equipped panel showing what occupies each slot; item picker organised by category, then type, then material (Weapons > Swords > Bronze) with counts, a breadcrumb, and clothing, accessories, and creature gear kept apart from armour; search, raw prefab entry for modded items; stacks, durability as a percent of the real maximum for the chosen quality, quality, styles where an item has them, and equipped state with the game's one-item-per-slot rule; remove an item with Remove from Inventory in the editor, the Delete key, or right-click |
 | Skills | Supported Valheim skill levels, including adding one or all vanilla skills the character does not have yet |
-| Stats | Supported health, stamina, progression, and related character values |
 | Character details | Supported character-level fields such as name |
 | New characters | Create a brand-new character (name, model, hair, beard, colours) with the game's starting defaults, then edit it like any other |
 
@@ -318,7 +317,6 @@ The durable product roadmap is [issue #2](https://github.com/Knapp-Kevin/WulfPac
 │   ├── itemEditDialog.py
 │   ├── equipmentPanel.py
 │   ├── skillsTab.py
-│   ├── statsTab.py
 │   ├── miscTab.py
 │   ├── glyphs.py
 │   ├── branding.py

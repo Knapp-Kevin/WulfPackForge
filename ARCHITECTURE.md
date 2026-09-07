@@ -11,7 +11,7 @@ Player
 PySide6 desktop UI
   │
   ├── character discovery
-  ├── appearance / inventory / skills / stats editors
+  ├── appearance / inventory / skills editors
   ├── save-health/status surface
   └── save orchestration
         │
@@ -48,7 +48,7 @@ Owns the player-facing desktop experience.
 - `appearanceTab.py`, `appearancePreview.py`, and `hdrColorControls.py` own appearance selection, the composed live preview, and guarded HDR colour editing; `newCharacterDialog.py` reuses that appearance surface for creation.
 - `inventoryTab.py`, `inventorySlot.py`, and `equipmentPanel.py` own the grid, drag-and-drop interactions, and derived equipped-slot summary; `itemPickerDialog.py` provides the category tree and search, while `itemEditDialog.py` handles constraints and durability-percent editing.
 - `glyphs.py` renders, tints, caches, and validates original inventory and appearance artwork, with item fallback behavior resolved by `data/glyphs.py`.
-- `skillsTab.py`, `statsTab.py`, and `miscTab.py` own their respective controls and data mapping; `fieldTracker.py` supports preserve-by-default write-back.
+- `skillsTab.py` and `miscTab.py` own their respective controls and data mapping; `fieldTracker.py` supports preserve-by-default write-back.
 
 The UI should not bypass the workspace or save-safety layer.
 

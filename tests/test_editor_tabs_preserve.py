@@ -13,7 +13,6 @@ from tests.fixture_saves import realistic_player_hex
 from ui.appearanceTab import AppearanceTab
 from ui.miscTab import MiscTab
 from ui.skillsTab import SkillsTab
-from ui.statsTab import StatsTab
 
 
 APP = QApplication.instance() or QApplication([])
@@ -251,44 +250,6 @@ class AppearanceTabPreserveTests(unittest.TestCase):
         tab.overbright_checkbox.setChecked(True)
         tab.skin_hdr_spins[0].setValue(8.0)
         self.assertIn("Extreme overbright", tab.hdr_warning_label.text())
-
-
-class StatsTabPreserveTests(unittest.TestCase):
-    def test_vitals_hint_explains_recalculation(self):
-        data = loaded_player_data()
-        baseline = copy.deepcopy(data)
-        tab = StatsTab()
-        tab.load_data(data, {})
-        hint = tab.vitals_hint.text().lower()
-        self.assertTrue(tab.vitals_hint.isVisibleTo(tab))
-        self.assertIn("food", hint)
-        self.assertIn("recalculat", hint)
-        tab.save_changes()
-        self.assertEqual(data, baseline)
-
-    def test_noop_preserves_four_foods_low_vitals_and_food_precision(self):
-        data = loaded_player_data()
-        baseline = copy.deepcopy(data)
-        tab = StatsTab()
-        root = {"used_cheats": False}
-        tab.load_data(data, root)
-        self.assertEqual(tab.food_table.rowCount(), 4)
-        tab.save_changes()
-        self.assertEqual(data, baseline)
-        self.assertEqual(data["max_health"], 10.0)
-        self.assertEqual(root, {"used_cheats": False})
-
-    def test_editing_max_health_changes_only_that_field(self):
-        data = loaded_player_data()
-        baseline = copy.deepcopy(data)
-        tab = StatsTab()
-        tab.load_data(data, {"used_cheats": False})
-        tab.max_health_spin.setValue(150.0)
-        tab.save_changes()
-        self.assertEqual(data["max_health"], 150.0)
-        for key in baseline:
-            if key != "max_health":
-                self.assertEqual(data[key], baseline[key], key)
 
 
 class MiscTabPreserveTests(unittest.TestCase):
