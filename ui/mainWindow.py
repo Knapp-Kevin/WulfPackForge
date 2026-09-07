@@ -8,6 +8,7 @@ from ui.inventoryTab import InventoryTab
 from ui.skillsTab import SkillsTab
 from ui.appearanceTab import AppearanceTab
 from ui.miscTab import MiscTab
+from ui.recordTab import RecordTab
 from ui.saveStatusWidget import SaveStatusWidget
 from subscripts.valheim_detection import ScanState, ValheimScan, scan_valheim, valheim_warning_message
 from ui.branding import APP_WINDOW_TITLE
@@ -37,7 +38,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         if startup_warning:
             self._warn_if_valheim_running()
-        self._reset_state()
+        self.__dict__.update(_EMPTY_STATE)
         self.setWindowTitle(APP_WINDOW_TITLE)
         self.resize(1200, 940)
 
@@ -73,9 +74,6 @@ class MainWindow(QMainWindow):
         msg.setInformativeText(messages.STARTUP_RUNNING_INFO)
         msg.exec()
 
-    def _reset_state(self):
-        self.__dict__.update(_EMPTY_STATE)
-
     def closeEvent(self, event):
         self.picker.shutdown()
         super().closeEvent(event)
@@ -101,9 +99,9 @@ class MainWindow(QMainWindow):
     def _build_tabs(self):
         self.tabs = QTabWidget()
         self.inventory_tab, self.skills_tab = InventoryTab(), SkillsTab()
-        self.appearance_tab, self.misc_tab = AppearanceTab(), MiscTab()
-        for tab, title in ((self.appearance_tab, "Appearance"), (self.inventory_tab, "Inventory"),
-                           (self.skills_tab, "Skills"), (self.misc_tab, "Misc")):
+        self.appearance_tab, self.misc_tab, self.record_tab = AppearanceTab(), MiscTab(), RecordTab()
+        for tab, title in ((self.appearance_tab, "Appearance"), (self.inventory_tab, "Inventory"), (self.skills_tab, "Skills"),
+                           (self.misc_tab, "Misc"), (self.record_tab, "Record")):
             self.tabs.addTab(tab, title)
         return self.tabs
 
@@ -167,14 +165,15 @@ class MainWindow(QMainWindow):
         self.current_fch, self.current_source, self.current_modified_at = os.path.abspath(filename), source, modified_at
         for tab in (self.inventory_tab, self.skills_tab, self.appearance_tab):
             tab.load_data(self.player_data)
-        self.misc_tab.load_data(self.player_data, self.root_save)
+        for tab in (self.misc_tab, self.record_tab):
+            tab.load_data(self.player_data, self.root_save)
         self._set_loaded(True, f"Editing: {self.root_save.get('character_name')}  •  {os.path.basename(filename)}")
         self._set_health(valid=True, version=self.root_save.get("version"), source=source, modified_at=modified_at)
         self.tabs.setCurrentWidget(self.appearance_tab)
         self.refresh_discovered_characters()
 
     def _reject_load(self, source, modified_at, exc):
-        self._reset_state()
+        self.__dict__.update(_EMPTY_STATE)
         self.btn_save_save.setEnabled(False)
         self._set_loaded(False)
         self._set_health(valid=False, version=None, source=source, modified_at=modified_at, error=str(exc))
