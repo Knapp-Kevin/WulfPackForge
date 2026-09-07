@@ -1,6 +1,7 @@
 import copy
 import os
 import unittest
+from tests.qt_support import QtTestCase
 from unittest import mock
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
@@ -30,7 +31,7 @@ def loaded_tab():
     return data, tab
 
 
-class InventoryRemoveTests(unittest.TestCase):
+class InventoryRemoveTests(QtTestCase):
     def test_delete_slot_item_removes_only_that_entry(self):
         data, tab = loaded_tab()
         before = copy.deepcopy(data["inventory"])

@@ -3,7 +3,9 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
+import subscripts.characterDiscovery as discovery
 from subscripts.characterDiscovery import candidate_character_directories, discover_character_saves
 from subscripts.fchUtil import compile_fch
 
@@ -57,6 +59,30 @@ class CharacterDiscoveryTests(unittest.TestCase):
 
             self.assertIn((local_dir.resolve(), "Local"), directories)
             self.assertIn((cloud_dir.resolve(), "Steam Cloud (local copy)"), directories)
+
+    def test_registry_steam_path_is_searched_on_windows(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            home = Path(temp_dir)
+            cloud_dir = home / "OtherDrive" / "steam" / "userdata" / "42" / "892970" / "remote" / "characters_local"
+            cloud_dir.mkdir(parents=True)
+            with patch.object(discovery, "registry_steam_path", return_value=home / "OtherDrive" / "steam"):
+                directories = candidate_character_directories(home=home, system_name="Windows")
+            self.assertIn((cloud_dir.resolve(), "Steam local copy"), directories)
+            with patch.object(discovery, "registry_steam_path", return_value=None):
+                directories = candidate_character_directories(home=home, system_name="Windows")
+            self.assertNotIn((cloud_dir.resolve(), "Steam local copy"), directories)
+
+    def test_registry_lookup_tolerates_a_missing_key(self):
+        try:
+            import winreg
+        except ImportError:
+            self.skipTest("winreg is Windows only")
+        with patch.object(winreg, "OpenKey", side_effect=FileNotFoundError):
+            self.assertIsNone(discovery.registry_steam_path())
+        with patch.object(winreg, "OpenKey"), patch.object(winreg, "QueryValueEx", return_value=("", winreg.REG_SZ)):
+            self.assertIsNone(discovery.registry_steam_path())
+        with patch.object(winreg, "OpenKey"), patch.object(winreg, "QueryValueEx", return_value=("g:/steam", winreg.REG_SZ)):
+            self.assertEqual(discovery.registry_steam_path(), Path("g:/steam"))
 
     def test_discovery_returns_verified_character_metadata(self):
         with tempfile.TemporaryDirectory() as temp_dir:

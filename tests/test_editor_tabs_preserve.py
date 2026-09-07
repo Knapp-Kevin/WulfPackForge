@@ -1,6 +1,7 @@
 import copy
 import os
 import unittest
+from tests.qt_support import QtTestCase
 from unittest.mock import patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
@@ -23,7 +24,7 @@ def loaded_player_data() -> dict:
     return unpack_player_data_hex(realistic_player_hex())
 
 
-class SkillsTabPreserveTests(unittest.TestCase):
+class SkillsTabPreserveTests(QtTestCase):
     def test_skills_noop_preserves_unknown_id_and_precision(self):
         data = loaded_player_data()
         baseline = copy.deepcopy(data)
@@ -55,7 +56,7 @@ class SkillsTabPreserveTests(unittest.TestCase):
         self.assertEqual(second, baseline)
 
 
-class SkillsTabAddTests(unittest.TestCase):
+class SkillsTabAddTests(QtTestCase):
     def _addable(self, tab):
         return [tab.add_skill_combo.itemText(i) for i in range(tab.add_skill_combo.count())]
 
@@ -90,7 +91,7 @@ class SkillsTabAddTests(unittest.TestCase):
         self.assertTrue(tab.btn_add_skill.isEnabled())
 
 
-class AppearanceTabPreserveTests(unittest.TestCase):
+class AppearanceTabPreserveTests(QtTestCase):
     def test_noop_preserves_unknown_hair_and_model(self):
         data = loaded_player_data()
         baseline = copy.deepcopy(data)
@@ -252,7 +253,7 @@ class AppearanceTabPreserveTests(unittest.TestCase):
         self.assertIn("Extreme overbright", tab.hdr_warning_label.text())
 
 
-class MiscTabPreserveTests(unittest.TestCase):
+class MiscTabPreserveTests(QtTestCase):
     def test_rename_writes_only_root_name(self):
         data = loaded_player_data()
         baseline = copy.deepcopy(data)

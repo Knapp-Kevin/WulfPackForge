@@ -67,10 +67,29 @@ def _local_save_roots(home: Path, system_name: str) -> List[Path]:
     return [base / "characters_local", base / "characters"]
 
 
+def registry_steam_path() -> Optional[Path]:
+    """Steam's install directory from the current user's registry (Windows only); None when unavailable."""
+    try:
+        import winreg
+    except ImportError:
+        return None
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Valve\Steam") as key:
+            value, kind = winreg.QueryValueEx(key, "SteamPath")
+    except OSError:
+        return None
+    if kind != winreg.REG_SZ or not value:
+        return None
+    return Path(value)
+
+
 def _steam_userdata_roots(home: Path, system_name: str) -> List[Path]:
     candidates = []
 
     if system_name == "Windows":
+        registry_root = registry_steam_path()
+        if registry_root is not None:
+            candidates.append(registry_root / "userdata")
         for env_name in ("PROGRAMFILES(X86)", "PROGRAMFILES"):
             base = os.environ.get(env_name)
             if base:

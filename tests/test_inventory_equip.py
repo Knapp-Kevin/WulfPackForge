@@ -1,6 +1,7 @@
 import copy
 import os
 import unittest
+from tests.qt_support import QtTestCase
 from unittest.mock import patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
@@ -42,7 +43,7 @@ class FakeEditDialog:
         return dict(FakeEditDialog.result)
 
 
-class InventoryEquipTests(unittest.TestCase):
+class InventoryEquipTests(QtTestCase):
     def test_equipping_dress_unequips_fenring_chest(self):
         fenring = base_item("ArmorFenringChest", 0, 0, True)
         dress = base_item("ArmorDress4", 1, 0, False)

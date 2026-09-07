@@ -1,6 +1,7 @@
 import copy
 import os
 import unittest
+from tests.qt_support import QtTestCase
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -16,7 +17,7 @@ APP = QApplication.instance() or QApplication([])
 VANILLA_IDS = sorted(skill_id for skill_id in VALHEIM_SKILLS if skill_id)
 
 
-class SkillsAddAllTests(unittest.TestCase):
+class SkillsAddAllTests(QtTestCase):
     def test_empty_character_shows_hint_and_add_all_seeds_every_vanilla_skill(self):
         data = unpack_player_data_hex(realistic_player_hex())
         data["skills"] = []

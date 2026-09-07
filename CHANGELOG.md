@@ -7,6 +7,7 @@ The project is currently evolving toward its first branded Wulfpack Forge releas
 ## Unreleased
 
 ### Added
+- Character discovery reads Steam's install location from the Windows registry, so Steam Cloud local copies are found when Steam is installed outside Program Files (for example on another drive). The Program Files and STEAM_DIR searches remain as fallbacks.
 - A read-only Record tab showing what the character file records beyond the editable fields: creation date, player ID, forsaken power, worlds visited and known world names, known biomes, trophies, known recipes, crafting stations and their levels, known materials, unique items, and active food. Names come from the item catalog; anything unrecognised is shown by its stored name rather than hidden. Nothing on the tab can be edited or written back.
 
 ### Fixed

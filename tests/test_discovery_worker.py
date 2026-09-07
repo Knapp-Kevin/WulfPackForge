@@ -2,6 +2,7 @@ import os
 import threading
 import time
 import unittest
+from tests.qt_support import QtTestCase
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -20,7 +21,7 @@ def fake_record(name="Ares"):
     return CharacterRecord(key="1:1", name=name, states=[state])
 
 
-class DiscoveryWorkerTests(unittest.TestCase):
+class DiscoveryWorkerTests(QtTestCase):
     def test_scan_runs_off_the_ui_thread(self):
         seen = {}
 

@@ -1,6 +1,7 @@
 """Every rewired signal still does its job; connections are bound methods, never self-capturing lambdas."""
 import os
 import unittest
+from tests.qt_support import QtTestCase
 from unittest.mock import patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
@@ -24,7 +25,7 @@ from ui.itemPickerDialog import ItemPickerDialog
 APP = QApplication.instance() or QApplication([])
 
 
-class SignalWiringTests(unittest.TestCase):
+class SignalWiringTests(QtTestCase):
     def test_preset_button_click_scales_the_picked_colour(self):
         tab = AppearanceTab()
         data = unpack_player_data_hex(realistic_player_hex())
