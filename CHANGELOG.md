@@ -7,6 +7,7 @@ The project is currently evolving toward its first branded Wulfpack Forge releas
 ## Unreleased
 
 ### Fixed
+- The banner now scales with the window: the whole image stays visible at every width, its height follows the image's proportions (between 90 and 260 px), and it renders sharply on high-DPI displays instead of showing a cropped horizontal slice that jumped on resize.
 - The item picker only offers things a character can actually carry. Creature attacks (troll log swings, draugr and skeleton weapons, charred greatswords, brute taunts) and internal cheat items no longer appear in any category or search result; the Advanced raw-prefab entry remains for deliberate use.
 - Named weapons without a material in their prefab name (Splitnir and its Bleeding, Storming, and Primal variants, Mistwalker, Krom, Nidhögg, Slayer, Ripper, Dyrnwyn, and the rest) now sit under their crafting tier in the picker, such as Weapons › Spears › Flametal. Any type that still has unranked items shows an "Other" branch, so nothing is reachable only from the type node.
 - Saving no longer rewrites data you did not change. Modded or unrecognised skill IDs were previously reset to 0, hairstyles and beards missing from the built-in tables were replaced with "none", a fourth active food was dropped, and every skill level, health, and stamina value was rounded. A save without edits now produces a byte-identical file.

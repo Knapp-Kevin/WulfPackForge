@@ -3,7 +3,7 @@ import os
 import shutil
 import tempfile
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QSize, Qt, QTimer
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import *
 
@@ -15,6 +15,15 @@ from ui.miscTab import MiscTab
 from ui.saveStatusWidget import SaveStatusWidget
 from ui.valheim_detection import ScanState, ValheimScan, scan_valheim, valheim_warning_message
 from ui.branding import APP_NAME, APP_SUBTITLE, APP_AUTHOR, APP_WINDOW_TITLE, banner_path
+
+BANNER_MIN_HEIGHT = 90
+BANNER_MAX_HEIGHT = 260
+
+
+def banner_height_for(width: int, source: QSize) -> int:
+    """Label height that shows the whole banner at ``width``, clamped to a sensible band."""
+    natural = round(width * source.height() / max(1, source.width()))
+    return max(BANNER_MIN_HEIGHT, min(BANNER_MAX_HEIGHT, natural))
 from ui.newCharacterDialog import NewCharacterDialog
 
 from subscripts.characterDiscovery import discover_character_saves
@@ -76,7 +85,7 @@ class MainWindow(QMainWindow):
         self._brand_pixmap = QPixmap(str(banner_path()))
         self.brand_banner = QLabel()
         self.brand_banner.setObjectName("brandBanner")
-        self.brand_banner.setFixedHeight(180)
+        self.brand_banner.setFixedHeight(banner_height_for(900, self._brand_pixmap.size()))
         self.brand_banner.setAlignment(Qt.AlignCenter)
         self.brand_banner.setAccessibleName(f"{APP_NAME} banner")
         self.brand_banner.setAccessibleDescription(
@@ -164,24 +173,25 @@ class MainWindow(QMainWindow):
             self.brand_banner.setText(f"{APP_NAME}\n{APP_SUBTITLE}\nby {APP_AUTHOR}")
             return
 
-        target = self.brand_banner.size()
-        if target.width() <= 0 or target.height() <= 0:
+        width = self.brand_banner.width()
+        if width <= 0:
             return
-
+        height = banner_height_for(width, self._brand_pixmap.size())
+        self.brand_banner.setFixedHeight(height)
+        ratio = self.devicePixelRatioF()
         scaled = self._brand_pixmap.scaled(
-            target,
-            Qt.KeepAspectRatioByExpanding,
+            QSize(int(width * ratio), int(height * ratio)),
+            Qt.KeepAspectRatio,
             Qt.SmoothTransformation,
         )
-        x = max(0, (scaled.width() - target.width()) // 2)
-        y = max(0, (scaled.height() - target.height()) // 2)
-        cropped = scaled.copy(x, y, target.width(), target.height())
-        self.brand_banner.setPixmap(cropped)
+        scaled.setDevicePixelRatio(ratio)
+        self.brand_banner.setPixmap(scaled)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
         if hasattr(self, "brand_banner"):
             self._refresh_brand_banner()
+            QTimer.singleShot(0, self._refresh_brand_banner)  # again once the layout has settled
 
     def _metadata_for_path(self, filename):
         normalized = os.path.normcase(os.path.abspath(filename))
