@@ -78,6 +78,21 @@ class MainWindowSaveFlowTests(unittest.TestCase):
     def _backups(self):
         return sorted(self.workspace_root.rglob("*.bak*"))
 
+    def test_editor_offers_four_tabs_and_never_writes_vitals(self):
+        titles = [self.window.tabs.tabText(i) for i in range(self.window.tabs.count())]
+        self.assertEqual(titles, ["Appearance", "Inventory", "Skills", "Misc"])
+        opened = unpack_player_data_hex(self.window.root_save["player_data_hex"])
+        opened_cheats = self.window.root_save.get("used_cheats")
+        self.window.misc_tab.name_input.setText("Renamed")
+        self.window.save_save_file()
+        self.assertEqual(RecordingMessageBox.calls[-1][0], "info")
+        written_root = verify_fch_round_trip(str(self.source))
+        written = unpack_player_data_hex(written_root["player_data_hex"])
+        for key in ("max_health", "health", "max_stamina", "stamina", "max_eitr", "eitr", "foods", "guardian_power", "guardian_power_cooldown"):
+            self.assertEqual(written[key], opened[key], key)
+        self.assertEqual(written_root.get("used_cheats"), opened_cheats)
+        self.assertEqual(written_root["character_name"], "Renamed")
+
     def test_noop_save_is_byte_identical(self):
         self.assertTrue(self.window.btn_save_save.isEnabled())
         self.window.save_save_file()

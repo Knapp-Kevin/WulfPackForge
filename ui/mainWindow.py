@@ -7,7 +7,6 @@ from PySide6.QtWidgets import (QDialog, QFileDialog, QHBoxLayout, QLabel, QMainW
                                QPushButton, QTabWidget, QVBoxLayout, QWidget)
 from ui.inventoryTab import InventoryTab
 from ui.skillsTab import SkillsTab
-from ui.statsTab import StatsTab
 from ui.appearanceTab import AppearanceTab
 from ui.miscTab import MiscTab
 from ui.saveStatusWidget import SaveStatusWidget
@@ -90,10 +89,10 @@ class MainWindow(QMainWindow):
 
     def _build_tabs(self):
         self.tabs = QTabWidget()
-        self.inventory_tab, self.skills_tab, self.stats_tab = InventoryTab(), SkillsTab(), StatsTab()
+        self.inventory_tab, self.skills_tab = InventoryTab(), SkillsTab()
         self.appearance_tab, self.misc_tab = AppearanceTab(), MiscTab()
         for tab, title in ((self.appearance_tab, "Appearance"), (self.inventory_tab, "Inventory"),
-                           (self.skills_tab, "Skills"), (self.stats_tab, "Stats"), (self.misc_tab, "Misc")):
+                           (self.skills_tab, "Skills"), (self.misc_tab, "Misc")):
             self.tabs.addTab(tab, title)
         return self.tabs
 
@@ -160,7 +159,6 @@ class MainWindow(QMainWindow):
         self.current_fch, self.current_source, self.current_modified_at = os.path.abspath(filename), source, modified_at
         for tab in (self.inventory_tab, self.skills_tab, self.appearance_tab):
             tab.load_data(self.player_data)
-        self.stats_tab.load_data(self.player_data, self.root_save)
         self.misc_tab.load_data(self.player_data, self.root_save)
         self.file_label.setText(f"Editing: {self.root_save.get('character_name')}  •  {os.path.basename(filename)}")
         self._set_health(valid=True, version=self.root_save.get("version"), source=source, modified_at=modified_at)
@@ -221,7 +219,7 @@ class MainWindow(QMainWindow):
         """Candidate-first: build and verify inside the workspace, then replace the active file atomically."""
         candidate_path = temp_paths[0]
         session.assert_source_unchanged()  # Steam, Valheim, or another editor may have touched the source
-        for tab in (self.inventory_tab, self.skills_tab, self.stats_tab, self.appearance_tab, self.misc_tab):
+        for tab in (self.inventory_tab, self.skills_tab, self.appearance_tab, self.misc_tab):
             tab.save_changes()
         self.root_save["player_data_hex"] = pack_player_data_hex(self.player_data)
         write_fch_bytes(serialize_save(self.root_save), candidate_path)

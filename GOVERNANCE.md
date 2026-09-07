@@ -16,7 +16,7 @@ In scope:
 
 - character appearance editing;
 - inventory editing;
-- supported skills and stats;
+- supported skills;
 - character metadata;
 - local discovery of Valheim character files;
 - safe save verification, backup, and replacement;
