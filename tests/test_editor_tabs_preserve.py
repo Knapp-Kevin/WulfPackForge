@@ -254,6 +254,18 @@ class AppearanceTabPreserveTests(unittest.TestCase):
 
 
 class StatsTabPreserveTests(unittest.TestCase):
+    def test_vitals_hint_explains_recalculation(self):
+        data = loaded_player_data()
+        baseline = copy.deepcopy(data)
+        tab = StatsTab()
+        tab.load_data(data, {})
+        hint = tab.vitals_hint.text().lower()
+        self.assertTrue(tab.vitals_hint.isVisibleTo(tab))
+        self.assertIn("food", hint)
+        self.assertIn("recalculat", hint)
+        tab.save_changes()
+        self.assertEqual(data, baseline)
+
     def test_noop_preserves_four_foods_low_vitals_and_food_precision(self):
         data = loaded_player_data()
         baseline = copy.deepcopy(data)

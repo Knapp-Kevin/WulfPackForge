@@ -10,7 +10,8 @@ from PySide6.QtWidgets import (
     QTableWidget,
     QTableWidgetItem,
     QPushButton,
-    QHeaderView
+    QHeaderView,
+    QLabel,
 )
 
 from data.powers import GUARDIAN_POWERS
@@ -77,6 +78,13 @@ class StatsTab(QWidget):
         self.stamina_spin = self.vital_spins["stamina"]
         self.max_eitr_spin = self.vital_spins["max_eitr"]
         self.eitr_spin = self.vital_spins["eitr"]
+        self.vitals_hint = QLabel(
+            "Valheim recalculates maximum health, stamina, and eitr from active food when the character loads, "
+            "so an edited maximum is a starting point, not a fixed value. Current values are kept up to that maximum."
+        )
+        self.vitals_hint.setWordWrap(True)
+        self.vitals_hint.setStyleSheet("color: #8fa3ab;")
+        layout.addRow(self.vitals_hint)
         return group
 
     def _build_food_group(self) -> QGroupBox:
