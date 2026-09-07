@@ -7,6 +7,7 @@ from PySide6.QtCore import QSize
 from PySide6.QtWidgets import QApplication
 
 from ui.mainWindow import BANNER_MAX_HEIGHT, BANNER_MIN_HEIGHT, MainWindow, banner_height_for
+from tests.qt_support import dispose
 
 
 APP = QApplication.instance() or QApplication([])
@@ -35,7 +36,7 @@ class BannerScalingTests(unittest.TestCase):
             self.assertLessEqual(round(logical_w), label.width(), width)
             self.assertEqual(label.height(), banner_height_for(label.width(), source), width)
             self.assertAlmostEqual(logical_w / logical_h, source.width() / source.height(), delta=0.02)
-        window.close()
+        dispose(window)
 
 
 if __name__ == "__main__":
