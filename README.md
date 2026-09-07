@@ -62,6 +62,7 @@ Known equipment is edited against its quality-based durability maximum, while un
 | Inventory | Large illustrated grid with stack and quality badges, drag-and-drop to move or swap items, and an Equipped panel showing what occupies each slot; item picker organised by category, then type, then material (Weapons > Swords > Bronze) with counts, a breadcrumb, and clothing, accessories, and creature gear kept apart from armour; search, raw prefab entry for modded items; stacks, durability as a percent of the real maximum for the chosen quality, quality, styles where an item has them, and equipped state with the game's one-item-per-slot rule; remove an item with Remove from Inventory in the editor, the Delete key, or right-click |
 | Skills | Supported Valheim skill levels, including adding one or all vanilla skills the character does not have yet |
 | Character details | Supported character-level fields such as name |
+| Character records | Every copy of a character (the active save, Valheim's `.old` and backup files, Wulfpack Forge snapshots and backups) is grouped under one record by the identity inside the save; **States…** lists them and can open one or restore it as the active save through the normal verified Save Changes path |
 | New characters | Create a brand-new character (name, model, hair, beard, colours) with the game's starting defaults, then edit it like any other |
 
 ### Creating a character
@@ -92,7 +93,7 @@ Wulfpack Forge writes these appearance values as the same floating-point RGB fie
 
 Wulfpack Forge reads **character files that exist on the local computer**.
 
-It searches the normal Valheim local-save directories and Steam userdata locations for `.fch` files that have been synchronized to disk. A character that exists only remotely in Steam Cloud cannot be opened until Steam has downloaded or synchronized a local copy.
+It searches the normal Valheim local-save directories and Steam userdata locations for `.fch` files that have been synchronized to disk. Files are grouped into character records by the player id and creation stamp inside each save, so the active file, Valheim's `.fch.old` and `_backup` copies, and Wulfpack Forge's own snapshots and backups appear as states of one character rather than as separate entries. A character that exists only remotely in Steam Cloud cannot be opened until Steam has downloaded or synchronized a local copy.
 
 If no character appears:
 

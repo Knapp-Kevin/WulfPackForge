@@ -34,7 +34,7 @@ class HardeningTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             garbage = Path(temp) / "broken.fch"
             garbage.write_bytes(b"not a save at all")
-            with patch.object(mw, "discover_character_saves", return_value=[]), \
+            with patch.object(mw, "discover_character_records", return_value=[]), \
                     patch.object(mw, "QMessageBox", QuietMessageBox), \
                     self.assertLogs("ui.mainWindow", level="ERROR") as logs:
                 window = mw.MainWindow(startup_warning=False)

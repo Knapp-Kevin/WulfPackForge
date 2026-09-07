@@ -40,6 +40,10 @@ Do not provide your Steam password or authentication tokens to Wulfpack Forge or
 
 Wulfpack Forge writes a rotating log (1 MB, three backups) to `%LOCALAPPDATA%\WulfpackForge\logs\wulfpack-forge.log` on Windows, or the equivalent workspace root on other systems. Failures to open or save a character are recorded there with the full error. Attach the relevant lines to a bug report; the log contains file paths and error text only.
 
+## Character states
+
+The character list shows one row per character. **States…** lists every copy Wulfpack Forge can see: the active save, Valheim's `.fch.old` and backup files, and the workspace snapshots and backups. **Open state** inspects a copy; **Restore as active** loads it as a pending edit and nothing changes on disk until you click **Save Changes**, which still verifies, backs up the current active file, and replaces it atomically.
+
 ## Wulfpack Forge workspace
 
 Wulfpack Forge keeps editing protection outside Valheim's own save directories. On Windows the default workspace root is:

@@ -17,7 +17,7 @@ from ui.characterPicker import CharacterPickerBar
 from ui.newCharacterDialog import NewCharacterDialog
 from subscripts.saveFlow import looks_like_external_change, mtime_or_none, remove_quietly, stage_candidate
 from ui import messages
-from subscripts.characterDiscovery import discover_character_saves
+from subscripts.characterRecords import discover_character_records
 from subscripts.fchUtil import serialize_save, write_fch_bytes
 from subscripts.newCharacter import create_character_file, root_from_spec
 from subscripts.saveErrors import SaveFormatError
@@ -49,7 +49,7 @@ class MainWindow(QMainWindow):
         self.brand_banner = BrandBanner()
         self._brand_pixmap = self.brand_banner.source
         layout.addWidget(self.brand_banner)
-        self.picker = CharacterPickerBar(discover=lambda: discover_character_saves())
+        self.picker = CharacterPickerBar(discover=lambda: discover_character_records())
         layout.addWidget(self.picker)
         layout.addLayout(self._build_action_row())
         self.file_label = QLabel("No character loaded")
@@ -59,6 +59,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(self._build_tabs())
 
         self.picker.open_requested.connect(self.load_save_file)
+        self.picker.restore_requested.connect(self.restore_state)
         self.picker.new_requested.connect(self.create_new_character)
         self.refresh_discovered_characters()
 
@@ -71,8 +72,7 @@ class MainWindow(QMainWindow):
         msg.exec()
 
     def _reset_state(self):
-        for name, value in _EMPTY_STATE.items():
-            setattr(self, name, value)
+        self.__dict__.update(_EMPTY_STATE)
 
     def _build_action_row(self):
         row = QHBoxLayout()
@@ -95,10 +95,6 @@ class MainWindow(QMainWindow):
                            (self.skills_tab, "Skills"), (self.misc_tab, "Misc")):
             self.tabs.addTab(tab, title)
         return self.tabs
-
-    @property
-    def discovered_characters(self):
-        return self.picker.characters
 
     def refresh_discovered_characters(self):
         self.picker.refresh(self.current_fch)
@@ -135,8 +131,13 @@ class MainWindow(QMainWindow):
         if filename:
             self.load_save_file(filename)
 
-    def load_save_file(self, filename):
-        source, modified_at = self.picker.metadata_for(filename)
+    def restore_state(self, state_path, head_path):
+        """A state becomes the pending edit for the active save; Save Changes applies it."""
+        self.load_save_file(state_path, apply_to=head_path)
+
+    def load_save_file(self, filename, apply_to=None):
+        target = apply_to or filename
+        source, modified_at = self.picker.metadata_for(target)
         try:
             root_save = verify_fch_round_trip(filename)
             player_hex = root_save.get("player_data_hex")
@@ -146,8 +147,10 @@ class MainWindow(QMainWindow):
                 QMessageBox.warning(self, messages.NO_PLAYER_DATA_TITLE, messages.NO_PLAYER_DATA_BODY)
                 return
             player_data = unpack_player_data_hex(player_hex)
-            session = create_workspace_session(filename, root_save)
-            self._adopt_loaded(filename, root_save, player_data, session, source, modified_at)
+            session = create_workspace_session(target, root_save)
+            self._adopt_loaded(target, root_save, player_data, session, source, modified_at)
+            if apply_to:
+                self.file_label.setText(messages.restoring(filename, target))
         except Exception as exc:
             logger.exception("Could not open character %s", filename)
             self._reject_load(source, modified_at, exc)

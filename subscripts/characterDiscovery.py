@@ -22,6 +22,8 @@ class CharacterSave:
     version: Optional[int]
     valid: bool
     error: Optional[str] = None
+    player_id: Optional[int] = None
+    date_created: Optional[int] = None
 
     @property
     def modified_label(self) -> str:
@@ -150,6 +152,8 @@ def inspect_character_save(path: Path, source: str) -> CharacterSave:
             modified_at=modified_at,
             version=parsed.get("version"),
             valid=True,
+            player_id=parsed.get("player_id"),
+            date_created=parsed.get("date_created_unix"),
         )
     except (SaveFormatError, OSError, ValueError, KeyError) as exc:
         return CharacterSave(
