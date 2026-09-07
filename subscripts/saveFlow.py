@@ -7,7 +7,6 @@ from typing import Iterable
 
 logger = logging.getLogger(__name__)
 
-EXTERNAL_CHANGE_MARKERS = ("changed after it was opened", "disappeared after it was opened")
 
 
 def stage_candidate(working_path: str, destination: str) -> str:

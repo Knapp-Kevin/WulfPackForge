@@ -15,15 +15,15 @@ from ui.branding import APP_WINDOW_TITLE
 from ui.brandBanner import BANNER_MAX_HEIGHT, BANNER_MIN_HEIGHT, BrandBanner, banner_height_for  # noqa: F401
 from ui.characterPicker import CharacterPickerBar
 from ui.newCharacterDialog import NewCharacterDialog
-from subscripts.saveFlow import looks_like_external_change, mtime_or_none, remove_quietly, stage_candidate
+from subscripts.saveFlow import mtime_or_none, remove_quietly, stage_candidate
 from ui import messages
 from subscripts.characterRecords import discover_character_records
 from subscripts.fchUtil import serialize_save, write_fch_bytes
 from subscripts.newCharacter import create_character_file, root_from_spec
 from subscripts.saveErrors import SaveFormatError
 from subscripts.saveHealth import build_save_health_report
-from subscripts.saveSafety import replace_verified_save, verify_fch_round_trip
-from subscripts.workspace import SourceChangedError, create_workspace_session, store_verified_working_copy
+from subscripts.saveSafety import DestinationChangedError, replace_verified_save, verify_fch_round_trip
+from subscripts.workspace import SourceChangedError, WorkspaceError, create_workspace_session, store_verified_working_copy
 from subscripts.playerDataUtil import pack_player_data_hex, payload_is_supported, unpack_player_data_hex
 
 logger = logging.getLogger(__name__)
@@ -119,9 +119,7 @@ class MainWindow(QMainWindow):
 
     def create_new_character(self):
         dialog = NewCharacterDialog(self)
-        if dialog.exec() != QDialog.Accepted:
-            return
-        spec = dialog.result_spec()
+        spec = dialog.result_spec() if dialog.exec() == QDialog.Accepted else None
         if spec is None:
             return
         try:
@@ -207,14 +205,15 @@ class MainWindow(QMainWindow):
         temp_paths = [os.path.join(session.workspace_dir, "working", ".candidate.fch.tmp")]
         try:
             self._apply_changes(session, temp_paths)
-        except SourceChangedError as exc:
+        except (SourceChangedError, DestinationChangedError) as exc:
             logger.warning("Save refused: %s", exc)
             self._mark_external_change(str(exc))
             QMessageBox.critical(self, "Character Changed Outside Wulfpack Forge", messages.changed_outside(exc))
+        except (WorkspaceError, OSError) as exc:
+            logger.exception("Workspace or file error for %s", self.current_fch)
+            QMessageBox.critical(self, "Workspace or File Error", messages.not_saved(exc))
         except Exception as exc:
             logger.exception("Save Changes failed for %s", self.current_fch)
-            if looks_like_external_change(str(exc)):
-                self._mark_external_change(str(exc))
             QMessageBox.critical(self, "Changes Were Not Saved", messages.not_saved(exc))
         finally:
             remove_quietly(temp_paths)

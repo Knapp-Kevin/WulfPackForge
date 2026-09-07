@@ -14,6 +14,10 @@ class SaveVerificationError(SaveFormatError):
     """Raised when a compiled Valheim save fails structural verification."""
 
 
+class DestinationChangedError(SaveVerificationError):
+    """The active file changed or vanished after it was opened; nothing may be replaced."""
+
+
 def _sha256_file(path: str) -> str:
     digest = hashlib.sha256()
     with open(path, "rb") as handle:
@@ -131,18 +135,19 @@ def replace_verified_save(
 
     if expected_destination_sha256 is not None:
         if not destination_path.is_file():
-            raise SaveVerificationError(
+            raise DestinationChangedError(
                 "The active character file disappeared after it was opened. Reload the character before applying changes."
             )
-        current_sha256 = _sha256_file(destination)
-        if current_sha256 != expected_destination_sha256:
-            raise SaveVerificationError(
+        if _sha256_file(destination) != expected_destination_sha256:
+            raise DestinationChangedError(
                 "The active character file changed after it was opened. Reload it before applying changes so newer Steam, Valheim, or external edits are not overwritten."
             )
 
-    backup_path = create_timestamped_backup(
-        destination,
-        backup_directory=backup_directory,
-    )
+    destination_sha256 = _sha256_file(destination) if destination_path.is_file() else None
+    backup_path = create_timestamped_backup(destination, backup_directory=backup_directory)
+    if backup_path is not None and _sha256_file(backup_path) != destination_sha256:
+        raise SaveVerificationError(
+            f"The backup at {backup_path} does not match the active character file, so the active file was not replaced."
+        )
     os.replace(candidate_path, destination)
     return backup_path
