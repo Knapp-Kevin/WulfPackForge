@@ -40,7 +40,7 @@ The current build enables saving for character-save format versions 40 through 4
 
 The compact status card tells you whether the selected save is verified for editing, where the local copy came from, and whether Wulfpack Forge has a protected backup.
 
-![Wulfpack Forge main window showing a verified synthetic character, local Steam Cloud source, save version, catalog version, and workspace backup](docs/screenshots/main-status.png)
+![Wulfpack Forge main window showing a verified synthetic character, synthetic source, save version, catalog version, and workspace backup](docs/screenshots/main-status.png)
 
 Appearance controls use readable choices and color previews, so changing a model, hairstyle, beard, or color does not require save-format knowledge.
 
@@ -49,6 +49,10 @@ Appearance controls use readable choices and color previews, so changing a model
 Inventory editing combines the familiar character grid with original item-category glyphs, material tinting, searchable catalog guidance, known stack and quality limits, and a raw-prefab path for modded or newer items.
 
 ![Wulfpack Forge Inventory tab showing synthetic items and the categorised, searchable item picker with original glyph art](docs/screenshots/inventory.png)
+
+Known equipment is edited against its quality-based durability maximum, while untouched durability values are preserved exactly.
+
+![Wulfpack Forge item editor showing a synthetic Bronze Sword at quality 2 with durability expressed as a percentage of its maximum](docs/screenshots/item-editor.png)
 
 ## What Wulfpack Forge can edit
 
@@ -181,6 +185,8 @@ python tools/update_item_catalog.py --expected-version 0.221.12
 
 The generator refuses unexpected source-version drift and suspiciously small catalogs so a game update cannot silently rewrite the application data model.
 
+Item durability is maintained separately in `data/valheim_durability.json`. `tools/update_item_durability.py` builds that table from Valheim community wiki item pages, records only numeric durability facts, and preserves the source attribution in the generated file. For a known item and quality, Wulfpack Forge calculates the maximum as `base + per_level * (quality - 1)` and presents the saved durability as a percentage of that maximum. Unknown durability data stays on the raw-value path rather than being guessed.
+
 ## Running from source
 
 Source installation is intended for contributors, developers, and advanced users.
@@ -218,7 +224,8 @@ The repository uses PyInstaller to produce a self-contained Windows executable. 
 - installs application dependencies;
 - runs the automated test suite;
 - builds `WulfpackForge.exe`;
-- bundles the versioned item catalog, canonical Wulfpack Forge banner, and original inventory glyph masters;
+- bundles `data/valheim_items.json`, `data/valheim_durability.json`, the canonical banner, the Frostwulf application icon, 34 original inventory glyph masters, and the complete hair and beard thumbnail sets under `assets/glyphs/hair/` and `assets/glyphs/beard/`;
+- embeds `assets/wulfpack-forge.ico` as the Windows executable icon;
 - smoke-tests the packaged executable and required assets;
 - creates a Windows ZIP package;
 - generates SHA-256 checksums;
@@ -238,9 +245,16 @@ Automated coverage currently includes:
 - save-health and compatibility-state derivation;
 - item catalog generation and version drift;
 - catalog resolution and duplicate-name behavior;
+- item grouping by category, type, and material, plus equipment roles, slots, hand conflicts, and one-item-per-slot enforcement;
 - unknown/modded item preservation;
+- inventory drag-and-drop moves and swaps, equipment-panel refreshes, and item removal through the editor, Delete key, and inventory actions;
+- durability-page parsing, quality-based maximum calculations, percent editing, raw fallback, and exact preservation of untouched durability values;
 - inventory glyph mapping, fallback, tinting, decoding, and transparency;
+- live appearance-preview composition, beard-to-face fitting, preset anchoring, and non-mutating style and colour updates;
 - guarded HDR/overbright appearance controls, negative-value prevention, preset behavior, and unclamped round-trip preservation;
+- new-character construction, strict verification, calibrated defaults, collision refusal, and non-overwriting placement;
+- failure logging, rotating log-file setup, and graceful handling when the workspace log path is unavailable;
+- structural limits enforced by `tests/test_razor.py`: at most 250 lines per source file, 40 lines per function, and three control-flow nesting levels, with no star imports and no PySide6 imports outside `ui/`;
 - offscreen Qt widget behavior;
 - Wulfpack Forge branding identity and decodable runtime asset validation;
 - Python source compilation;
@@ -253,28 +267,62 @@ The durable product roadmap is [issue #2](https://github.com/Knapp-Kevin/WulfPac
 ```text
 ├── main.py
 ├── assets/
-│   └── wulfpack-forge-banner.jpg
+│   ├── FrostWulf-favicon.png
+│   ├── wulfpack-forge-banner.jpg
+│   ├── wulfpack-forge.ico
+│   └── glyphs/
+│       ├── items/
+│       ├── hair/
+│       └── beard/
 ├── data/
 │   ├── items.py
-│   └── valheim_items.json
-├── tools/
-│   └── update_item_catalog.py
+│   ├── item_groups.py
+│   ├── equipment.py
+│   ├── glyphs.py
+│   ├── appearance.py
+│   ├── durability.py
+│   ├── skills.py
+│   ├── powers.py
+│   ├── valheim_items.json
+│   └── valheim_durability.json
 ├── subscripts/
-│   ├── characterDiscovery.py
+│   ├── binaryIO.py
 │   ├── fchUtil.py
 │   ├── playerDataUtil.py
-│   ├── saveHealth.py
 │   ├── saveSafety.py
-│   └── workspace.py
+│   ├── saveHealth.py
+│   ├── workspace.py
+│   ├── saveFlow.py
+│   ├── saveErrors.py
+│   ├── characterDiscovery.py
+│   ├── valheim_detection.py
+│   ├── newCharacter.py
+│   └── logSetup.py
+├── tools/
+│   ├── update_item_catalog.py
+│   ├── update_item_durability.py
+│   └── make_app_icon.py
 ├── ui/
-│   ├── branding.py
 │   ├── mainWindow.py
+│   ├── characterPicker.py
+│   ├── brandBanner.py
+│   ├── messages.py
 │   ├── saveStatusWidget.py
 │   ├── appearanceTab.py
+│   ├── appearancePreview.py
+│   ├── hdrColorControls.py
+│   ├── newCharacterDialog.py
 │   ├── inventoryTab.py
+│   ├── inventorySlot.py
+│   ├── itemPickerDialog.py
+│   ├── itemEditDialog.py
+│   ├── equipmentPanel.py
 │   ├── skillsTab.py
 │   ├── statsTab.py
-│   └── miscTab.py
+│   ├── miscTab.py
+│   ├── glyphs.py
+│   ├── branding.py
+│   └── fieldTracker.py
 ├── tests/
 └── .github/workflows/
 ```

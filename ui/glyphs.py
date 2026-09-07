@@ -5,6 +5,7 @@ from typing import Dict, Optional, Tuple, Union
 from PySide6.QtCore import QRectF, Qt
 from PySide6.QtGui import QColor, QFont, QIcon, QImageReader, QPainter, QPixmap
 
+from data.appearance import VALHEIM_BEARDS, VALHEIM_HAIRS
 from data.glyphs import GLYPH_IDS, GLYPH_MASTER_DIR, TINTS, glyph_for
 from data.items import ItemDefinition, resolve_item
 from ui.branding import resource_path
@@ -135,4 +136,18 @@ def glyph_bundle_is_usable() -> bool:
             or not image.hasAlphaChannel()
         ):
             return False
+    return True
+
+
+def appearance_bundle_is_usable() -> bool:
+    """Verify every catalog hair and beard thumbnail is present and decodable."""
+    catalogs = (("hair", VALHEIM_HAIRS), ("beard", VALHEIM_BEARDS))
+    for kind, entries in catalogs:
+        for key in entries:
+            reader = QImageReader(str(glyph_root() / kind / f"{key}.png"))
+            if not reader.canRead():
+                return False
+            image = reader.read()
+            if image.isNull() or image.size().width() != 512 or image.size().height() != 512:
+                return False
     return True

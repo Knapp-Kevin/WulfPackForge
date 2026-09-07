@@ -22,9 +22,9 @@ def _verify_brand_bundle() -> bool:
 
 
 def _verify_glyph_bundle() -> bool:
-    from ui.glyphs import glyph_bundle_is_usable
+    from ui.glyphs import appearance_bundle_is_usable, glyph_bundle_is_usable
 
-    return glyph_bundle_is_usable()
+    return glyph_bundle_is_usable() and appearance_bundle_is_usable()
 
 
 def main():
