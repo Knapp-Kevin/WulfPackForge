@@ -1,11 +1,19 @@
 """Character discovery row: the combo of local saves, Refresh, Open Character, and New Character."""
+import logging
 import os
+import time
+from concurrent.futures import ThreadPoolExecutor
 
-from PySide6.QtCore import Signal
+from PySide6.QtCore import QTimer, Signal
+from PySide6.QtWidgets import QApplication
 from PySide6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
 from subscripts.characterRecords import find_state
 from ui.characterStatesDialog import CharacterStatesDialog
+
+logger = logging.getLogger(__name__)
+SCANNING_LABEL = "Scanning for characters…"
+POLL_MS = 50
 
 NO_CHARACTERS_HELP = (
     "No local character files were found. If this character is stored in Steam Cloud, "
@@ -27,6 +35,12 @@ class CharacterPickerBar(QWidget):
         self._discover = discover
         self._last_path = None
         self.records = []
+        self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="wulfpack-scan")
+        self._future = None
+        self._rescan_wanted = False
+        self._poll = QTimer(self)
+        self._poll.setInterval(POLL_MS)
+        self._poll.timeout.connect(self._check_scan)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -76,8 +90,43 @@ class CharacterPickerBar(QWidget):
         self.refresh(self._last_path)
 
     def refresh(self, current_path):
+        """Start a background scan; the result is applied on the UI thread when it completes."""
         self._last_path = current_path
-        self.records = self._discover()
+        if self._future is not None and not self._future.done():
+            self._rescan_wanted = True
+            return
+        self.character_combo.clear()
+        self.character_combo.addItem(SCANNING_LABEL, None)
+        self.btn_open_discovered.setEnabled(False)
+        self.btn_states.setEnabled(False)
+        self._future = self._executor.submit(self._discover)
+        self._poll.start()
+
+    def _check_scan(self):
+        if self._future is None or not self._future.done():
+            return
+        self._poll.stop()
+        future, self._future = self._future, None
+        try:
+            records = list(future.result())
+        except Exception:
+            logger.exception("Character discovery failed")
+            records = []
+        self._apply_records(records)
+        if self._rescan_wanted:
+            self._rescan_wanted = False
+            self.refresh(self._last_path)
+
+    def wait_for_scan(self, timeout: float = 30.0) -> None:
+        """Spin the event loop until no scan is pending (tests, or callers needing records now)."""
+        deadline = time.monotonic() + timeout
+        while (self._future is not None or self._rescan_wanted) and time.monotonic() < deadline:
+            QApplication.processEvents()
+            time.sleep(0.01)
+
+    def _apply_records(self, records):
+        current_path = self._last_path
+        self.records = records
         self.character_combo.clear()
         if not self.records:
             self._show_empty()

@@ -53,7 +53,9 @@ class SignalWiringTests(unittest.TestCase):
         calls = []
         picker = CharacterPickerBar(discover=lambda: calls.append(1) or [])
         picker.refresh(None)
+        picker.wait_for_scan()
         QTest.mouseClick(picker.btn_refresh_characters, Qt.LeftButton)
+        picker.wait_for_scan()
         self.assertEqual(len(calls), 2)
 
     def test_new_character_colour_button_updates_the_colour(self):

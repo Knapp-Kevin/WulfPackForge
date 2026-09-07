@@ -98,6 +98,7 @@ class CharacterRecordTests(unittest.TestCase):
         records = discover_character_records(home=self.home, system_name="Linux", workspace_root=self.workspace)
         picker = CharacterPickerBar(discover=lambda: records)
         picker.refresh(None)
+        picker.wait_for_scan()
         labels = [picker.character_combo.itemText(i) for i in range(picker.character_combo.count())]
         self.assertEqual(len(labels), 2)
         self.assertTrue(any(label.startswith("Ares — 3 states") for label in labels), labels)
