@@ -7,7 +7,7 @@ from typing import Iterable, List, Optional, Tuple
 
 from data.equipment import role_for
 from data.glyphs import glyph_for
-from data.items import ITEMS, ItemDefinition
+from data.items import EXTRA_ITEMS, ITEMS, ItemDefinition
 
 GROUPS = (
     "Weapons",
@@ -25,6 +25,8 @@ GROUPS = (
     "Trophies",
     "Misc",
 )
+
+MODDED = "Modded"  # items registered from a mod scan; branches by the vanilla group they would belong to
 
 # Hair and beard rows appear in the JotunnDoc item list but are not inventory items.
 EXCLUDED_TYPES = frozenset({"Customization"})
@@ -135,11 +137,15 @@ def _sorted(items: Iterable[ItemDefinition]) -> List[ItemDefinition]:
 
 
 def items_in_group(name: str) -> List[ItemDefinition]:
+    if name == MODDED:
+        return _sorted(item for item in EXTRA_ITEMS if group_for(item) is not None)
     return _sorted(item for item in ITEMS if group_for(item) == name)
 
 
 def items_under(group: str, subgroup: Optional[str] = None, material: Optional[str] = None) -> List[ItemDefinition]:
     """Items beneath a navigation node; any level may be omitted to widen the selection."""
+    if group == MODDED:
+        return [item for item in items_in_group(MODDED) if subgroup is None or group_for(item) == subgroup]
     return [
         item for item in items_in_group(group)
         if (subgroup is None or subgroup_for(item) == subgroup) and _material_matches(item, material)
@@ -156,6 +162,10 @@ def navigation_tree() -> List[Tuple[str, List[Tuple[str, List[str]]]]]:
             for subgroup in [s for s in _SUBTYPE_ORDER if s in present]:
                 branches.append((subgroup, _branch_materials(group, subgroup)))
         tree.append((group, branches))
+    modded = items_in_group(MODDED)
+    if modded:
+        present = {group_for(item) for item in modded}
+        tree.append((MODDED, [(group, []) for group in GROUPS if group in present]))
     return tree
 
 
@@ -175,6 +185,6 @@ def _branch_materials(group: str, subgroup: str) -> List[str]:
 def pickable_items() -> List[ItemDefinition]:
     """Every selectable catalog item that belongs to a group, sorted by display name."""
     return sorted(
-        (item for item in ITEMS if group_for(item) is not None),
+        (item for item in (*ITEMS, *EXTRA_ITEMS) if group_for(item) is not None),
         key=lambda item: (item.display_name.lower(), item.prefab.lower()),
     )

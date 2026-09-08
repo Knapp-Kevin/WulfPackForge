@@ -94,15 +94,15 @@ def _label_for(item: Optional[ItemDefinition], prefab: str) -> str:
     return (words[0][:2] if words else "?").upper()
 
 
-def extracted_pixmap(prefab: str, size: int) -> Optional[QPixmap]:
-    """An icon the user extracted from their own game into the workspace, or None."""
-    key = ("extracted", prefab, size)
+def extracted_pixmap(prefab: str, size: int, variant: int = 0) -> Optional[QPixmap]:
+    """An icon the user extracted from their own game into the workspace, or None; per style when known."""
+    key = ("extracted", prefab, size, variant)
     cached = _CACHE.get(key)
     if cached is not None:
         return cached
-    path = cached_icon_path(icon_cache_dir(default_workspace_root()), prefab)
+    path = cached_icon_path(icon_cache_dir(default_workspace_root()), prefab, variant)
     if path is None and mod_icons_dir() is not None:
-        path = cached_icon_path(mod_icons_dir(), prefab)
+        path = cached_icon_path(mod_icons_dir(), prefab, variant)
     if path is None:
         return None
     pixmap = QPixmap(str(path))
@@ -112,10 +112,10 @@ def extracted_pixmap(prefab: str, size: int) -> Optional[QPixmap]:
     return _CACHE[key]
 
 
-def item_pixmap(target: Union[str, ItemDefinition], size: int = 64) -> QPixmap:
+def item_pixmap(target: Union[str, ItemDefinition], size: int = 64, variant: int = 0) -> QPixmap:
     item = target if isinstance(target, ItemDefinition) else resolve_item(target)
     prefab = item.prefab if item else str(target)
-    extracted = extracted_pixmap(prefab, size)
+    extracted = extracted_pixmap(prefab, size, variant)
     if extracted is not None:
         return extracted
     glyph, tint = glyph_for(item)
@@ -136,8 +136,8 @@ def item_pixmap(target: Union[str, ItemDefinition], size: int = 64) -> QPixmap:
     return pixmap
 
 
-def item_icon(target: Union[str, ItemDefinition], size: int = 64) -> QIcon:
-    return QIcon(item_pixmap(target, size))
+def item_icon(target: Union[str, ItemDefinition], size: int = 64, variant: int = 0) -> QIcon:
+    return QIcon(item_pixmap(target, size, variant))
 
 
 def glyph_bundle_is_usable() -> bool:

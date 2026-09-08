@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 _SKILLS: Dict[int, str] = {}
 _ICONS_DIR: Optional[Path] = None
 _PROFILE: Optional[str] = None
+_ICON_FILES: Dict[str, list] = {}
 
 
 def mods_dir(workspace_root: Path) -> Path:
@@ -20,7 +21,7 @@ def mods_dir(workspace_root: Path) -> Path:
 
 def apply_overrides(workspace_root: Path) -> int:
     """Load the catalog under the workspace (if any) and register it; returns the number of items registered."""
-    global _SKILLS, _ICONS_DIR, _PROFILE
+    global _SKILLS, _ICONS_DIR, _PROFILE, _ICON_FILES
     directory = mods_dir(workspace_root)
     catalog = load_catalog(directory)
     if not catalog:
@@ -28,6 +29,7 @@ def apply_overrides(workspace_root: Path) -> int:
     _PROFILE = catalog.get("profile")
     _ICONS_DIR = catalog_paths(directory)[1]
     _SKILLS = {int(k): v for k, v in (catalog.get("skills") or {}).items() if str(k).lstrip("-").isdigit()}
+    _ICON_FILES = {prefab: list(record.get("icons") or []) for prefab, record in (catalog.get("items") or {}).items()}
     definitions = [_definition(prefab, record) for prefab, record in (catalog.get("items") or {}).items()]
     registered = register_items(definitions)
     logger.info("Mod overrides from %s: %d skills, %d items registered", _PROFILE, len(_SKILLS), registered)
@@ -42,8 +44,8 @@ def _definition(prefab: str, record: dict) -> ItemDefinition:
 
 def reset_overrides() -> None:
     """Forget a loaded catalog (tests, or before re-applying)."""
-    global _SKILLS, _ICONS_DIR, _PROFILE
-    _SKILLS, _ICONS_DIR, _PROFILE = {}, None, None
+    global _SKILLS, _ICONS_DIR, _PROFILE, _ICON_FILES
+    _SKILLS, _ICONS_DIR, _PROFILE, _ICON_FILES = {}, None, None, {}
 
 
 def active_profile() -> Optional[str]:
@@ -61,3 +63,7 @@ def skill_label(skill_id: int) -> str:
 
 def mod_icons_dir() -> Optional[Path]:
     return _ICONS_DIR
+
+
+def mod_icon_files(prefab: str) -> list:
+    return list(_ICON_FILES.get(prefab, []))

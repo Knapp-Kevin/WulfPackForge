@@ -2,7 +2,7 @@ import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Iterable, Optional
+from typing import List, Dict, Iterable, Optional
 
 
 @dataclass(frozen=True)
@@ -171,7 +171,6 @@ def _build_catalog():
         if bool(record.get("selectable")):
             selectable_items.append(item)
 
-    # Preserve curated entries even if the external generator temporarily omits one.
     for item in _CURATED_ITEMS:
         if item.prefab.lower() not in known_prefabs:
             all_items.append(item)
@@ -196,19 +195,20 @@ ITEMS_BY_COMPLETION: Dict[str, ItemDefinition] = {
     item.completion_label.lower(): item for item in ITEMS
 }
 
-# Human-readable names are only resolvable when unique. Completion labels always
-# include the prefab and remain unambiguous.
-_display_candidates: Dict[str, ItemDefinition] = {}
-_duplicate_displays = set()
-for _item in ITEMS:
-    _key = _item.display_name.lower()
-    if _key in _display_candidates:
-        _duplicate_displays.add(_key)
-    else:
-        _display_candidates[_key] = _item
-ITEMS_BY_DISPLAY: Dict[str, ItemDefinition] = {
-    key: item for key, item in _display_candidates.items() if key not in _duplicate_displays
-}
+def _unique_display_index(items) -> Dict[str, ItemDefinition]:
+    """Human-readable names resolve only when unique; completion labels always carry the prefab."""
+    seen: Dict[str, ItemDefinition] = {}
+    duplicates = set()
+    for item in items:
+        key = item.display_name.lower()
+        duplicates.add(key) if key in seen else seen.setdefault(key, item)
+    return {key: item for key, item in seen.items() if key not in duplicates}
+
+
+ITEMS_BY_DISPLAY: Dict[str, ItemDefinition] = _unique_display_index(ITEMS)
+
+
+EXTRA_ITEMS: List[ItemDefinition] = []  # registered at run time (scanned mods); never part of ITEMS
 
 
 def register_items(definitions: Iterable[ItemDefinition]) -> int:
@@ -218,8 +218,15 @@ def register_items(definitions: Iterable[ItemDefinition]) -> int:
         key = item.prefab.lower()
         if key and key not in ITEMS_BY_PREFAB:
             ITEMS_BY_PREFAB[key] = item
+            EXTRA_ITEMS.append(item)
             added += 1
     return added
+
+
+def clear_registered_items() -> None:
+    for item in EXTRA_ITEMS:
+        ITEMS_BY_PREFAB.pop(item.prefab.lower(), None)
+    EXTRA_ITEMS.clear()
 
 
 def iter_items() -> Iterable[ItemDefinition]:
