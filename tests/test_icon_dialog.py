@@ -1,5 +1,6 @@
 import os
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -56,11 +57,11 @@ class IconExtractionDialogTests(QtTestCase):
             reports = []
             dialog.extracted.connect(reports.append)
             dialog.start()
-            for _ in range(200):
+            deadline = time.monotonic() + 10
+            while not reports and time.monotonic() < deadline:  # the worker may be slow on a CI runner
                 APP.processEvents()
-                if reports:
-                    break
                 dialog._check()
+                time.sleep(0.01)
             self.assertEqual(len(reports), 1)
             self.assertIn("Extracted 1 of", dialog.status.text())
             self.assertTrue(dialog.btn_extract.isEnabled())
