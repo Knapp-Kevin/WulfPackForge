@@ -118,11 +118,11 @@ class ModProfileTests(unittest.TestCase):
             (appdata / "Thunderstore Mod Manager" / "DataFolder" / "Valheim" / "profiles" / "Hard" / "BepInEx" / "plugins").mkdir(parents=True)
             (appdata / "Thunderstore Mod Manager" / "DataFolder" / "Valheim" / "profiles" / "Empty").mkdir(parents=True)
             (appdata / "r2modmanPlus-local" / "Valheim" / "profiles" / "Alt" / "BepInEx" / "plugins").mkdir(parents=True)
-            names = [p.name for p in discover_profiles(game, appdata)]
+            names = [p.name for p in discover_profiles(game, appdata, system_name="Windows")]  # manager roots differ per platform
             self.assertEqual(names, ["Game folder (BepInEx)", "Thunderstore: Hard", "r2modman: Alt"])
             self.assertIsNone(profile_from_directory(appdata))
             self.assertEqual(profile_from_directory(game / "BepInEx").plugins_dir, game / "BepInEx" / "plugins")
-            self.assertEqual(discover_profiles(None, Path(temp) / "nowhere"), [])
+            self.assertEqual(discover_profiles(None, Path(temp) / "nowhere", system_name="Windows"), [])
 
 
     def test_manager_roots_follow_the_platform(self):
