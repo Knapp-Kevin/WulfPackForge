@@ -54,6 +54,18 @@ Known equipment is edited against its quality-based durability maximum, while un
 
 ![Wulfpack Forge item editor showing a synthetic Bronze Sword at quality 2 with durability expressed as a percentage of its maximum](docs/screenshots/item-editor.png)
 
+The read-only **Record** tab gathers the history and knowledge stored with the character without turning those fields into cheats or accidental write targets.
+
+![Wulfpack Forge Record tab showing the synthetic vanilla character's creation details, known worlds, biomes, trophies, recipes, stations, materials, unique items, and active food](docs/screenshots/record-tab.png)
+
+**Game Icons** is an optional, local extraction step. Before it reads anything, the dialog explains what it needs, where the copies stay, and whether the optional dependency is available.
+
+![Wulfpack Forge Game Icons dialog before extraction, with no game artwork present](docs/screenshots/game-icons-dialog.png)
+
+**Mods** is likewise opt-in. The pre-scan dialog selects a local BepInEx profile and makes the read-only boundary explicit before any plugin file is inspected.
+
+![Wulfpack Forge Mod Scan dialog before a profile scan, with no mod data applied](docs/screenshots/mods-dialog.png)
+
 ## What Wulfpack Forge can edit
 
 | Area | Capabilities |
@@ -62,6 +74,7 @@ Known equipment is edited against its quality-based durability maximum, while un
 | Inventory | Large illustrated grid with stack and quality badges, drag-and-drop to move or swap items, and an Equipped panel showing what occupies each slot; item picker organised by category, then type, then material (Weapons > Swords > Bronze) with counts, a breadcrumb, and clothing, accessories, and creature gear kept apart from armour; search, raw prefab entry for modded items; stacks, durability as a percent of the real maximum for the chosen quality, quality, styles where an item has them, and equipped state with the game's one-item-per-slot rule; remove an item with Remove from Inventory in the editor, the Delete key, or right-click |
 | Skills | Supported Valheim skill levels, including adding one or all vanilla skills the character does not have yet |
 | Character details | Supported character-level fields such as name |
+| Record | Read-only creation date, player ID, forsaken power, visited and known worlds, known biomes, trophies, recipes, crafting stations and levels, materials, unique items, and active food. Nothing on this tab is editable or written back |
 | Character records | Every copy of a character (the active save, Valheim's `.old` and backup files, Wulfpack Forge snapshots and backups) is grouped under one record by the identity inside the save; **States…** lists them and can open one or restore it as the active save through the normal verified Save Changes path |
 | New characters | Create a brand-new character (name, model, hair, beard, colours) with the game's starting defaults, then edit it like any other |
 
@@ -72,6 +85,20 @@ Known equipment is edited against its quality-based durability maximum, while un
 Characters created by Wulfpack Forge have been loaded and played in Valheim 0.221.12 as part of the release evidence (2026-09-07), alongside edited existing characters; the created file layout is byte-for-byte the layout of a character created in-game on the same build. Vitals such as maximum health and stamina are recalculated by the game from active food, so they are starting points rather than fixed values.
 
 Known vanilla items use human-readable names and an appropriate original silhouette while retaining their prefab IDs. Unknown, modded, or newer-version items are preserved and receive a neutral fallback glyph rather than being rejected simply because the bundled catalog does not recognize them.
+
+### Optional game icons and item styles
+
+**Game Icons…** at the bottom-right of the Inventory tab can read item sprites from the player's own Valheim installation. Wulfpack Forge finds the install through Steam when possible or accepts a folder the player chooses, follows each prefab to its `ItemDrop` icons inside the streaming bundles, and stores PNG copies under `<workspace>/icons/`. The bundled original glyphs remain the fallback for items without an extracted icon.
+
+The game files are read only. Nothing extracted leaves the player's machine through Wulfpack Forge, and the application never bundles Valheim artwork. Extraction is entirely opt-in, needs the optional UnityPy dependency, and usually takes about a minute on its first run.
+
+When extracted icons include multiple variants, the item editor shows each style as its own picture with a label such as **Style 2 · blue**. Inventory tiles then show the selected style. The numeric style field remains available when pictures have not been extracted.
+
+### Optional mod scan
+
+**Mods…** on the Skills toolbar can scan a BepInEx profile from the game folder, Thunderstore Mod Manager, r2modman, or another folder the player chooses. Plugin DLLs are read as bytes; Wulfpack Forge never loads or runs mod code. The scan uses Valheim's stable string hash to label modded skill IDs. With UnityPy installed, it can also read item metadata and icons from asset bundles embedded in those DLLs, add the items under the picker's **Modded** group, and show their English names and pictures.
+
+The resulting catalog and icon copies stay under `<workspace>/mods/`. Plugin files are only read, nothing extracted is transmitted by the app, and neither mod assets nor game art are bundled with Wulfpack Forge.
 
 ## Advanced HDR / overbright appearance colors
 
@@ -93,7 +120,7 @@ Wulfpack Forge writes these appearance values as the same floating-point RGB fie
 
 Wulfpack Forge reads **character files that exist on the local computer**.
 
-It searches the normal Valheim local-save directories and Steam userdata locations for `.fch` files that have been synchronized to disk. Files are grouped into character records by the player id and creation stamp inside each save, so the active file, Valheim's `.fch.old` and `_backup` copies, and Wulfpack Forge's own snapshots and backups appear as states of one character rather than as separate entries. A character that exists only remotely in Steam Cloud cannot be opened until Steam has downloaded or synchronized a local copy.
+It searches the normal Valheim local-save directories and Steam userdata locations for `.fch` files that have been synchronized to disk. On Windows, it first reads `HKCU\Software\Valve\Steam\SteamPath` and searches that Steam installation's `userdata` tree, so a Steam library outside Program Files is discovered. Program Files and `STEAM_DIR` remain fallbacks. Files are grouped into character records by the player id and creation stamp inside each save, so the active file, Valheim's `.fch.old` and `_backup` copies, and Wulfpack Forge's own snapshots and backups appear as states of one character rather than as separate entries. A character that exists only remotely in Steam Cloud cannot be opened until Steam has downloaded or synchronized a local copy.
 
 If no character appears:
 
@@ -195,6 +222,7 @@ Source installation is intended for contributors, developers, and advanced users
 
 - Python 3.10 through 3.14; Python 3.12 is recommended and used by Windows CI
 - Git
+- Optional: UnityPy for **Game Icons** and the item/icon half of **Mods**. Skill-name scanning works without it
 
 ### Clone
 
@@ -208,6 +236,14 @@ cd WulfPackForge
 ```bash
 python -m pip install -r requirements.txt
 ```
+
+To enable local game-icon extraction and modded item names/icons as well:
+
+```bash
+python -m pip install -r requirements-optional.txt
+```
+
+The optional packages are not required for normal editing. When UnityPy is absent, each dependent feature reports that it is unavailable and leaves the bundled fallback artwork in use.
 
 ### Run
 
@@ -224,7 +260,7 @@ The repository uses PyInstaller to produce a self-contained Windows executable. 
 - installs application dependencies;
 - runs the automated test suite;
 - builds `WulfpackForge.exe`;
-- bundles `data/valheim_items.json`, `data/valheim_durability.json`, the canonical banner, the Frostwulf application icon, 34 original inventory glyph masters, and the complete hair and beard thumbnail sets under `assets/glyphs/hair/` and `assets/glyphs/beard/`;
+- bundles `data/valheim_items.json`, `data/valheim_durability.json`, the canonical banner, the Frostwulf application icon, the original inventory glyph masters, and the complete hair and beard thumbnail sets under `assets/glyphs/hair/` and `assets/glyphs/beard/`;
 - embeds `assets/wulfpack-forge.ico` as the Windows executable icon;
 - smoke-tests the packaged executable and required assets;
 - creates a Windows ZIP package;
@@ -281,8 +317,8 @@ The durable product roadmap is [issue #2](https://github.com/Knapp-Kevin/WulfPac
 │   ├── glyphs.py
 │   ├── appearance.py
 │   ├── durability.py
+│   ├── biomes.py
 │   ├── skills.py
-│   ├── powers.py
 │   ├── valheim_items.json
 │   └── valheim_durability.json
 ├── subscripts/
@@ -295,6 +331,15 @@ The durable product roadmap is [issue #2](https://github.com/Knapp-Kevin/WulfPac
 │   ├── saveFlow.py
 │   ├── saveErrors.py
 │   ├── characterDiscovery.py
+│   ├── characterRecords.py
+│   ├── characterSummary.py
+│   ├── iconExtraction.py
+│   ├── modItems.py
+│   ├── modOverride.py
+│   ├── modProfiles.py
+│   ├── modScan.py
+│   ├── stableHash.py
+│   ├── variantIcons.py
 │   ├── valheim_detection.py
 │   ├── newCharacter.py
 │   └── logSetup.py
@@ -314,11 +359,15 @@ The durable product roadmap is [issue #2](https://github.com/Knapp-Kevin/WulfPac
 │   ├── newCharacterDialog.py
 │   ├── inventoryTab.py
 │   ├── inventorySlot.py
+│   ├── iconExtractionDialog.py
 │   ├── itemPickerDialog.py
 │   ├── itemEditDialog.py
+│   ├── variantPicker.py
 │   ├── equipmentPanel.py
 │   ├── skillsTab.py
+│   ├── modScanDialog.py
 │   ├── miscTab.py
+│   ├── recordTab.py
 │   ├── glyphs.py
 │   ├── branding.py
 │   └── fieldTracker.py
