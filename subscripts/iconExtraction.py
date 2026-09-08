@@ -16,7 +16,9 @@ from typing import Callable, Dict, Iterable, List, Optional
 
 logger = logging.getLogger(__name__)
 
-BUNDLES_RELATIVE = Path("valheim_Data") / "StreamingAssets" / "SoftRef" / "Bundles"
+BUNDLES_RELATIVE = Path("valheim_Data") / "StreamingAssets" / "SoftRef" / "Bundles"  # Windows and Linux
+_MAC_DATA = Path("Contents") / "Resources" / "Data" / "StreamingAssets" / "SoftRef" / "Bundles"
+BUNDLE_LAYOUTS = (BUNDLES_RELATIVE, Path("valheim.app") / _MAC_DATA, _MAC_DATA)  # game folder, or the .app itself
 STEAM_GAME_RELATIVE = Path("steamapps") / "common" / "Valheim"
 INDEX_NAME = "index.json"
 INSTALL_HINT = "Icon extraction needs the optional UnityPy package: pip install -r requirements-optional.txt"
@@ -37,16 +39,38 @@ def extraction_available() -> bool:
     return importlib.util.find_spec("UnityPy") is not None
 
 
-def is_game_directory(path: Optional[Path]) -> bool:
-    return bool(path) and (Path(path) / BUNDLES_RELATIVE).is_dir()
-
-
-def find_game_directory(steam_root: Optional[Path]) -> Optional[Path]:
-    """The Valheim directory under a Steam install, or None when it is not there."""
-    if steam_root is None:
+def bundles_dir(path: Optional[Path]) -> Optional[Path]:
+    """The streaming-bundle folder beneath a game folder (or a macOS .app), or None."""
+    if not path:
         return None
-    candidate = Path(steam_root) / STEAM_GAME_RELATIVE
-    return candidate if is_game_directory(candidate) else None
+    for layout in BUNDLE_LAYOUTS:
+        candidate = Path(path) / layout
+        if candidate.is_dir():
+            return candidate
+    return None
+
+
+def is_game_directory(path: Optional[Path]) -> bool:
+    return bundles_dir(path) is not None
+
+
+def find_game_directory(steam_roots) -> Optional[Path]:
+    """The first Valheim folder under the given Steam root(s), or None when none has the game."""
+    if steam_roots is None:
+        return None
+    roots = [steam_roots] if isinstance(steam_roots, (str, Path)) else list(steam_roots)
+    for root in roots:
+        candidate = Path(root) / STEAM_GAME_RELATIVE
+        if is_game_directory(candidate):
+            return candidate
+    return None
+
+
+def default_game_directory() -> Optional[Path]:
+    """The installed game found through this platform's Steam locations, or None."""
+    from subscripts.characterDiscovery import steam_roots  # local import keeps discovery independent of extraction
+
+    return find_game_directory(steam_roots())
 
 
 def icon_cache_dir(workspace_root: Path) -> Path:
@@ -159,7 +183,7 @@ def extract_icons(game_dir: Path, prefabs: Iterable[str], cache_dir: Path, progr
     report = ExtractionReport(game_dir=str(game_dir), cache_dir=str(cache_dir), requested=len(wanted))
     if progress:
         progress("Reading game bundles (this takes a minute or two)", 0, 1)
-    environment = UnityPy.load(str(Path(game_dir) / BUNDLES_RELATIVE))
+    environment = UnityPy.load(str(bundles_dir(game_dir) or Path(game_dir) / BUNDLES_RELATIVE))
     if progress:
         progress("Resolving item icons", 0, 1)
     found = collect_item_icons(environment.objects, wanted, _unitypy_deref, _unitypy_icon)

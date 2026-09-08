@@ -1,14 +1,27 @@
 """Where BepInEx plugin sets live: the game folder itself and the mod managers' profile folders."""
 import os
+import platform
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 PLUGINS = Path("BepInEx") / "plugins"
-MANAGER_PROFILE_ROOTS = (
-    ("Thunderstore", Path("Thunderstore Mod Manager") / "DataFolder" / "Valheim" / "profiles"),
-    ("r2modman", Path("r2modmanPlus-local") / "Valheim" / "profiles"),
-)
+THUNDERSTORE = Path("Thunderstore Mod Manager") / "DataFolder" / "Valheim" / "profiles"
+R2MODMAN = Path("r2modmanPlus-local") / "Valheim" / "profiles"
+
+
+def manager_profile_roots(home: Optional[Path] = None, system_name: Optional[str] = None,
+                          appdata: Optional[Path] = None) -> List[Tuple[str, Path]]:
+    """Where each mod manager keeps its Valheim profiles on this platform."""
+    home = Path(home or Path.home())
+    system_name = system_name or platform.system()
+    if system_name == "Windows":
+        appdata = Path(appdata) if appdata else Path(os.environ.get("APPDATA") or home / "AppData" / "Roaming")
+        return [("Thunderstore", appdata / THUNDERSTORE), ("r2modman", appdata / R2MODMAN)]
+    if system_name == "Darwin":
+        return [("r2modman", home / "Library" / "Application Support" / R2MODMAN)]
+    config = Path(os.environ.get("XDG_CONFIG_HOME") or home / ".config")
+    return [("r2modman", config / R2MODMAN)]
 
 
 @dataclass(frozen=True)
@@ -39,16 +52,15 @@ def profile_from_directory(path: Path, name: Optional[str] = None) -> Optional[M
     return None
 
 
-def discover_profiles(game_dir: Optional[Path] = None, appdata: Optional[Path] = None) -> List[ModProfile]:
+def discover_profiles(game_dir: Optional[Path] = None, appdata: Optional[Path] = None,
+                      home: Optional[Path] = None, system_name: Optional[str] = None) -> List[ModProfile]:
     """Game-folder BepInEx first, then every manager profile that has a plugins folder."""
     profiles: List[ModProfile] = []
     if game_dir is not None:
         found = profile_from_directory(Path(game_dir), "Game folder (BepInEx)")
         if found:
             profiles.append(found)
-    appdata = Path(appdata) if appdata else Path(os.environ.get("APPDATA") or Path.home() / "AppData" / "Roaming")
-    for manager, relative in MANAGER_PROFILE_ROOTS:
-        root = appdata / relative
+    for manager, root in manager_profile_roots(home, system_name, appdata):
         if not root.is_dir():
             continue
         for entry in sorted(root.iterdir()):

@@ -8,8 +8,7 @@ from PySide6.QtWidgets import (QDialog, QDialogButtonBox, QFileDialog, QHBoxLayo
                                QProgressBar, QPushButton, QVBoxLayout)
 
 from data.items import iter_items
-from subscripts.characterDiscovery import registry_steam_path
-from subscripts.iconExtraction import (INSTALL_HINT, extract_icons, extraction_available, find_game_directory,
+from subscripts.iconExtraction import (INSTALL_HINT, default_game_directory, extract_icons, extraction_available,
                                        icon_cache_dir, is_game_directory)
 from subscripts.workspace import default_workspace_root
 
@@ -39,7 +38,7 @@ class IconExtractionDialog(QDialog):
         self._poll = QTimer(self)
         self._poll.setInterval(POLL_MS)
         self._poll.timeout.connect(self._check)
-        self._build(game_dir if game_dir is not None else find_game_directory(registry_steam_path()))
+        self._build(game_dir if game_dir is not None else default_game_directory())
 
     def _build(self, game_dir):
         layout = QVBoxLayout(self)
@@ -79,7 +78,7 @@ class IconExtractionDialog(QDialog):
     def start(self):
         game_dir = Path(self.game_dir_input.text().strip())
         if not is_game_directory(game_dir):
-            self.status.setText("That folder does not contain Valheim's asset bundles (valheim_Data/StreamingAssets/SoftRef/Bundles).")
+            self.status.setText("That folder does not contain Valheim's asset bundles (valheim_Data or valheim.app/Contents/Resources/Data, then StreamingAssets/SoftRef/Bundles).")
             return
         prefabs = [item.prefab for item in iter_items()]
         self.btn_extract.setEnabled(False)

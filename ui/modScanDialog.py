@@ -7,8 +7,7 @@ from PySide6.QtCore import QTimer, Signal
 from PySide6.QtWidgets import (QComboBox, QDialog, QDialogButtonBox, QFileDialog, QHBoxLayout, QLabel, QProgressBar,
                                QPushButton, QVBoxLayout)
 
-from subscripts.characterDiscovery import registry_steam_path
-from subscripts.iconExtraction import find_game_directory
+from subscripts.iconExtraction import default_game_directory
 from subscripts.modItems import items_available
 from subscripts.modOverride import mods_dir
 from subscripts.modProfiles import discover_profiles, profile_from_directory
@@ -39,7 +38,7 @@ class ModScanDialog(QDialog):
         self._poll = QTimer(self)
         self._poll.setInterval(POLL_MS)
         self._poll.timeout.connect(self._check)
-        self._build(profiles if profiles is not None else discover_profiles(find_game_directory(registry_steam_path())))
+        self._build(profiles if profiles is not None else discover_profiles(default_game_directory()))
 
     def _build(self, profiles):
         layout = QVBoxLayout(self)
