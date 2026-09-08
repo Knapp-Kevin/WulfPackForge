@@ -49,7 +49,7 @@ python -m compileall data subscripts ui tools main.py
 - control-flow nesting must not exceed three levels;
 - nested ternaries are prohibited;
 - star imports are prohibited;
-- PySide6 imports belong only under `ui/`;
+- no PySide6 imports under data/ or subscripts/ (the UI layer, main.py, and tests may import it)
 - signal connections must not use lambdas that capture `self`.
 
 Keep new code inside these limits instead of weakening the test. Run the Razor test directly with `python -m unittest tests.test_razor` when restructuring code.
