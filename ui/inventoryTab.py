@@ -1,4 +1,5 @@
 from PySide6.QtWidgets import (
+    QPushButton,
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
@@ -18,6 +19,8 @@ from ui.equipmentPanel import EquipmentPanel
 from ui.inventorySlot import InventorySlot
 from ui.itemEditDialog import REMOVE_ITEM, ItemEditDialog
 from ui.itemPickerDialog import ItemPickerDialog
+from ui.iconExtractionDialog import IconExtractionDialog
+from ui.glyphs import clear_cache
 
 class InventoryTab(QWidget):
     GRID_WIDTH = 8
@@ -46,7 +49,13 @@ class InventoryTab(QWidget):
         )
         self.usage_hint.setWordWrap(True)
         self.usage_hint.setStyleSheet("color: #8fa3ab;")
-        self.main_layout.addWidget(self.usage_hint)
+        footer = QHBoxLayout()
+        footer.addWidget(self.usage_hint, 1)
+        self.btn_game_icons = QPushButton("Game Icons…")
+        self.btn_game_icons.setToolTip("Read the item icons from your own Valheim installation (optional)")
+        self.btn_game_icons.clicked.connect(self.open_game_icons)
+        footer.addWidget(self.btn_game_icons, 0, Qt.AlignTop)
+        self.main_layout.addLayout(footer)
         
         self.slots = {}
         self.init_empty_grid()
@@ -66,6 +75,18 @@ class InventoryTab(QWidget):
                 
                 self.grid_layout.addWidget(slot, y, x)
                 self.slots[(x, y)] = slot
+
+    def open_game_icons(self):
+        dialog = IconExtractionDialog(self)
+        dialog.extracted.connect(self._icons_extracted)
+        dialog.exec()
+        dialog.shutdown()
+
+    def _icons_extracted(self, _report):
+        clear_cache()
+        for slot in self.slots.values():
+            if slot.item_data:
+                slot.set_item(slot.item_data)
 
     def load_data(self, player_data):
         self.player_data = player_data
