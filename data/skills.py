@@ -23,4 +23,5 @@ VALHEIM_SKILLS = {
     106: "Farming",
     107: "Crafting",
     108: "Dodge",
+    110: "Ride",
 }

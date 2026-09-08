@@ -211,6 +211,17 @@ ITEMS_BY_DISPLAY: Dict[str, ItemDefinition] = {
 }
 
 
+def register_items(definitions: Iterable[ItemDefinition]) -> int:
+    """Add definitions the catalog does not know (modded items); built-in entries are never replaced."""
+    added = 0
+    for item in definitions:
+        key = item.prefab.lower()
+        if key and key not in ITEMS_BY_PREFAB:
+            ITEMS_BY_PREFAB[key] = item
+            added += 1
+    return added
+
+
 def iter_items() -> Iterable[ItemDefinition]:
     return sorted(ITEMS, key=lambda item: (item.display_name.lower(), item.prefab.lower()))
 

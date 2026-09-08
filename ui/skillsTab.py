@@ -14,6 +14,9 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 
 from data.skills import VALHEIM_SKILLS
+from subscripts.modOverride import apply_overrides, skill_label
+from subscripts.workspace import default_workspace_root
+from ui.modScanDialog import ModScanDialog
 from ui.fieldTracker import FieldTracker
 
 
@@ -60,7 +63,26 @@ class SkillsTab(QWidget):
         toolbar.addWidget(self.add_skill_combo)
         toolbar.addWidget(self.btn_add_skill)
         toolbar.addWidget(self.btn_add_all_skills)
+        self.btn_mods = QPushButton("Mods…")
+        self.btn_mods.setToolTip("Scan a BepInEx profile so modded skills and items show their names (optional)")
+        self.btn_mods.clicked.connect(self.open_mod_scan)
+        toolbar.addWidget(self.btn_mods)
         return toolbar
+
+    def open_mod_scan(self):
+        dialog = ModScanDialog(self)
+        dialog.scanned.connect(self._mods_scanned)
+        dialog.exec()
+        dialog.shutdown()
+
+    def _mods_scanned(self, _report):
+        apply_overrides(default_workspace_root())
+        for row in range(self.table.rowCount()):
+            cell = self.table.item(row, 0)
+            index = cell.data(Qt.UserRole)
+            skill = self.player_data["skills"][index] if self.player_data else None
+            if skill is not None:
+                cell.setText(skill_label(skill.get("id", 0)))
 
     def load_data(self, player_data):
         self.tracker.clear()
@@ -112,7 +134,7 @@ class SkillsTab(QWidget):
         self.table.insertRow(row)
 
         skill_id = skill_data.get("id", 0)
-        skill_item = QTableWidgetItem(VALHEIM_SKILLS.get(skill_id, f"Unknown ({skill_id})"))
+        skill_item = QTableWidgetItem(skill_label(skill_id))
         skill_item.setFlags(skill_item.flags() & ~Qt.ItemIsEditable)
         skill_item.setData(Qt.UserRole, index)
         self.table.setItem(row, 0, skill_item)
