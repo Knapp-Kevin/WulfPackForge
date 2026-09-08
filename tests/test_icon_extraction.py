@@ -82,6 +82,21 @@ class CollectItemIconsTests(unittest.TestCase):
             (Path(temp) / ie.INDEX_NAME).write_text(json.dumps({"icons": {"a": ["a.png"]}}), encoding="utf-8")
             self.assertEqual(ie.load_index(Path(temp))["icons"], {"a": ["a.png"]})
 
+    def test_mac_app_bundle_layout_and_several_steam_roots(self):
+        with tempfile.TemporaryDirectory() as temp:
+            mac_steam = Path(temp) / "Library" / "Application Support" / "Steam"
+            game = mac_steam / "steamapps" / "common" / "Valheim"
+            bundles = game / "valheim.app" / "Contents" / "Resources" / "Data" / "StreamingAssets" / "SoftRef" / "Bundles"
+            bundles.mkdir(parents=True)
+            self.assertEqual(ie.bundles_dir(game), bundles)
+            self.assertEqual(ie.bundles_dir(game / "valheim.app"), bundles)
+            self.assertTrue(ie.is_game_directory(game))
+            self.assertEqual(ie.find_game_directory([Path(temp) / "nowhere", mac_steam]), game)
+            self.assertEqual(ie.find_game_directory(mac_steam), game)
+            self.assertIsNone(ie.find_game_directory([]))
+            with patch("subscripts.characterDiscovery.steam_roots", return_value=[mac_steam]):
+                self.assertEqual(ie.default_game_directory(), game)
+
     def test_availability_follows_the_optional_import(self):
         with patch.object(ie.importlib.util, "find_spec", return_value=None):
             self.assertFalse(ie.extraction_available())

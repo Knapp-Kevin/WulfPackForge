@@ -72,6 +72,15 @@ class CharacterDiscoveryTests(unittest.TestCase):
                 directories = candidate_character_directories(home=home, system_name="Windows")
             self.assertNotIn((cloud_dir.resolve(), "Steam local copy"), directories)
 
+    def test_steam_roots_per_platform(self):
+        home = Path("/Users/viking")
+        self.assertEqual(discovery.steam_roots(home, "Darwin"), [home / "Library" / "Application Support" / "Steam"])
+        self.assertEqual(discovery.steam_roots(home, "Linux"), [home / ".steam" / "steam", home / ".local" / "share" / "Steam"])
+        with patch.object(discovery, "registry_steam_path", return_value=Path("G:/Steam")), patch.dict(os.environ, {"STEAM_DIR": "D:/AltSteam"}):
+            roots = discovery.steam_roots(home, "Windows")
+        self.assertEqual(roots[0], Path("G:/Steam"))
+        self.assertEqual(roots[-1], Path("D:/AltSteam"))
+
     def test_registry_lookup_tolerates_a_missing_key(self):
         try:
             import winreg

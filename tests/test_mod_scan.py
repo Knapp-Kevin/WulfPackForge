@@ -9,7 +9,7 @@ from unittest.mock import patch
 from data.items import ItemDefinition, clear_registered_items, register_items, resolve_item
 from data.skills import VALHEIM_SKILLS
 from subscripts import modItems, modOverride, modScan
-from subscripts.modProfiles import ModProfile, discover_profiles, profile_from_directory
+from subscripts.modProfiles import ModProfile, discover_profiles, manager_profile_roots, profile_from_directory
 from subscripts.stableHash import skill_id_for, stable_hash_code
 
 
@@ -118,11 +118,23 @@ class ModProfileTests(unittest.TestCase):
             (appdata / "Thunderstore Mod Manager" / "DataFolder" / "Valheim" / "profiles" / "Hard" / "BepInEx" / "plugins").mkdir(parents=True)
             (appdata / "Thunderstore Mod Manager" / "DataFolder" / "Valheim" / "profiles" / "Empty").mkdir(parents=True)
             (appdata / "r2modmanPlus-local" / "Valheim" / "profiles" / "Alt" / "BepInEx" / "plugins").mkdir(parents=True)
-            names = [p.name for p in discover_profiles(game, appdata)]
+            names = [p.name for p in discover_profiles(game, appdata, system_name="Windows")]  # manager roots differ per platform
             self.assertEqual(names, ["Game folder (BepInEx)", "Thunderstore: Hard", "r2modman: Alt"])
             self.assertIsNone(profile_from_directory(appdata))
             self.assertEqual(profile_from_directory(game / "BepInEx").plugins_dir, game / "BepInEx" / "plugins")
-            self.assertEqual(discover_profiles(None, Path(temp) / "nowhere"), [])
+            self.assertEqual(discover_profiles(None, Path(temp) / "nowhere", system_name="Windows"), [])
+
+
+    def test_manager_roots_follow_the_platform(self):
+        home = Path("/Users/viking")
+        self.assertEqual(manager_profile_roots(home, "Darwin"), [("r2modman", home / "Library" / "Application Support" / "r2modmanPlus-local" / "Valheim" / "profiles")])
+        with patch.dict(os.environ, {"XDG_CONFIG_HOME": ""}):
+            self.assertEqual(manager_profile_roots(home, "Linux"), [("r2modman", home / ".config" / "r2modmanPlus-local" / "Valheim" / "profiles")])
+        self.assertEqual([name for name, _ in manager_profile_roots(home, "Windows", Path("C:/Roaming"))], ["Thunderstore", "r2modman"])
+        with tempfile.TemporaryDirectory() as temp:
+            mac_home = Path(temp)
+            (mac_home / "Library" / "Application Support" / "r2modmanPlus-local" / "Valheim" / "profiles" / "Sea" / "BepInEx" / "plugins").mkdir(parents=True)
+            self.assertEqual([p.name for p in discover_profiles(None, home=mac_home, system_name="Darwin")], ["r2modman: Sea"])
 
 
 @unittest.skipUnless(os.environ.get("WULFPACK_LIVE_MODS"), "set WULFPACK_LIVE_MODS=1 to scan the installed mod profiles")

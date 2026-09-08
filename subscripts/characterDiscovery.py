@@ -83,29 +83,31 @@ def registry_steam_path() -> Optional[Path]:
     return Path(value)
 
 
-def _steam_userdata_roots(home: Path, system_name: str) -> List[Path]:
-    candidates = []
-
+def steam_roots(home: Optional[Path] = None, system_name: Optional[str] = None) -> List[Path]:
+    """Where a Steam install may be on this platform, most likely first; existence is not checked."""
+    home = Path(home or Path.home())
+    system_name = system_name or platform.system()
+    roots: List[Path] = []
     if system_name == "Windows":
         registry_root = registry_steam_path()
         if registry_root is not None:
-            candidates.append(registry_root / "userdata")
+            roots.append(registry_root)
         for env_name in ("PROGRAMFILES(X86)", "PROGRAMFILES"):
             base = os.environ.get(env_name)
             if base:
-                candidates.append(Path(base) / "Steam" / "userdata")
+                roots.append(Path(base) / "Steam")
         steam_dir = os.environ.get("STEAM_DIR")
         if steam_dir:
-            candidates.append(Path(steam_dir) / "userdata")
+            roots.append(Path(steam_dir))
     elif system_name == "Darwin":
-        candidates.append(home / "Library" / "Application Support" / "Steam" / "userdata")
+        roots.append(home / "Library" / "Application Support" / "Steam")
     else:
-        candidates.extend([
-            home / ".steam" / "steam" / "userdata",
-            home / ".local" / "share" / "Steam" / "userdata",
-        ])
+        roots.extend([home / ".steam" / "steam", home / ".local" / "share" / "Steam"])
+    return roots
 
-    return candidates
+
+def _steam_userdata_roots(home: Path, system_name: str) -> List[Path]:
+    return [root / "userdata" for root in steam_roots(home, system_name)]
 
 
 def candidate_character_directories(
