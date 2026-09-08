@@ -1,5 +1,6 @@
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
+    QComboBox,
     QHBoxLayout,
     QCheckBox,
     QCompleter,
@@ -16,6 +17,7 @@ from PySide6.QtWidgets import (
 from data.durability import max_durability
 from data.items import CATALOG_GAME_VERSION, completion_labels, resolve_item
 from ui.glyphs import item_pixmap
+from ui.variantPicker import StyleSync
 
 
 REMOVE_ITEM = 2  # dialog result meaning "take this item out of the inventory"
@@ -66,6 +68,8 @@ class ItemEditDialog(QDialog):
         self.stack_input = _spin(int(item_data.get("stack", 1)), 0, 9999)
         self.quality_input = _spin(int(item_data.get("quality", 1)), 0, 99)
         self.variant_input = _spin(int(item_data.get("variant", 0)), 0, 999)
+        self.variant_combo = QComboBox()  # style by picture, when the icons were extracted
+        self.styles = StyleSync(self.variant_combo, self.variant_input, self._variant_changed)
         self.equipped_input = QCheckBox()
         self.equipped_input.setChecked(item_data.get("equipped", False))
 
@@ -95,7 +99,10 @@ class ItemEditDialog(QDialog):
         layout.addRow(self.durability_label, durability_row)
         layout.addRow("Quality Level:", self.quality_input)
         self.variant_label = QLabel("Variant (Style):")
-        layout.addRow(self.variant_label, self.variant_input)
+        variant_row = QHBoxLayout()
+        variant_row.addWidget(self.variant_combo, 1)
+        variant_row.addWidget(self.variant_input)
+        layout.addRow(self.variant_label, variant_row)
         layout.addRow("Equipped:", self.equipped_input)
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         self.btn_remove = buttons.addButton("Remove from Inventory", QDialogButtonBox.DestructiveRole)
@@ -154,7 +161,8 @@ class ItemEditDialog(QDialog):
     def _apply_catalog_constraints(self, preserve_existing=True):
         raw_value = self.prefab_input.text().strip()
         item = resolve_item(raw_value)
-        self.glyph_preview.setPixmap(item_pixmap(raw_value, 72))
+        self.styles.refresh(item.prefab if item else raw_value)
+        self.glyph_preview.setPixmap(item_pixmap(raw_value, 72, self.variant_input.value()))
         version_label = f"Valheim {CATALOG_GAME_VERSION}" if CATALOG_GAME_VERSION else "bundled"
         self._set_variant_visible(item is None or item.variants is None or item.variants > 1)
         if not item:
@@ -190,6 +198,9 @@ class ItemEditDialog(QDialog):
             f"Not found in the {version_label} catalog. Raw values are preserved; "
             "this may be a modded item or an item from a newer game version."
         )
+
+    def _variant_changed(self, value: int) -> None:
+        self.glyph_preview.setPixmap(item_pixmap(self.prefab_input.text().strip(), 72, value))
 
     def _set_variant_visible(self, visible: bool) -> None:
         """Only items with more than one style (or unknown items) show the variant field."""

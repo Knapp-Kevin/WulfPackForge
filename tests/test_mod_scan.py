@@ -6,7 +6,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from data.items import ITEMS_BY_PREFAB, ItemDefinition, register_items, resolve_item
+from data.items import ItemDefinition, clear_registered_items, register_items, resolve_item
 from data.skills import VALHEIM_SKILLS
 from subscripts import modItems, modOverride, modScan
 from subscripts.modProfiles import ModProfile, discover_profiles, profile_from_directory
@@ -82,7 +82,6 @@ class ModScanTests(unittest.TestCase):
             items = {"VACrossbowModer": {"display_name": "Dragonfrost Crossbow", "item_type": "Bow", "max_stack": 1, "max_quality": 4, "variants": 1, "icons": []}}
             modScan.write_catalog(mods, profile, {2143840399: "Sailing"}, items)
             self.assertEqual(modScan.load_catalog(mods)["skills"], {"2143840399": "Sailing"})
-            before = dict(ITEMS_BY_PREFAB)
             try:
                 registered = modOverride.apply_overrides(Path(temp) / "workspace")
                 self.assertEqual(registered, 1)
@@ -94,8 +93,7 @@ class ModScanTests(unittest.TestCase):
                 self.assertEqual(register_items([ItemDefinition(prefab="SwordBronze", display_name="Not replaced")]), 0)
                 self.assertEqual(resolve_item("SwordBronze").display_name, "Bronze Sword")
             finally:
-                ITEMS_BY_PREFAB.clear()
-                ITEMS_BY_PREFAB.update(before)
+                clear_registered_items()
                 modOverride.reset_overrides()
             self.assertEqual(modOverride.apply_overrides(Path(temp) / "empty"), 0)
 

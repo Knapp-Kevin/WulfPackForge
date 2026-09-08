@@ -52,7 +52,7 @@ class InventorySlot(QToolButton):
         catalog_item = resolve_item(prefab)
         display_name = catalog_item.display_name if catalog_item else prefab.replace("$item_", "").replace("_", " ").title()
 
-        self.setIcon(item_icon(prefab, ICON_SIZE))
+        self.setIcon(item_icon(prefab, ICON_SIZE, int(self.item_data.get("variant", 0) or 0)))
         self.setText(display_name)
         state = "equipped" if is_equipped else "not equipped"
         self.setAccessibleName(f"{display_name}, stack {stack}, {state}")
