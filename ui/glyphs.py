@@ -9,6 +9,7 @@ from data.appearance import VALHEIM_BEARDS, VALHEIM_HAIRS
 from data.glyphs import GLYPH_IDS, GLYPH_MASTER_DIR, TINTS, glyph_for
 from data.items import ItemDefinition, resolve_item
 from subscripts.iconExtraction import cached_icon_path, icon_cache_dir
+from subscripts.modOverride import mod_icons_dir
 from subscripts.workspace import default_workspace_root
 from ui.branding import resource_path
 
@@ -100,6 +101,8 @@ def extracted_pixmap(prefab: str, size: int) -> Optional[QPixmap]:
     if cached is not None:
         return cached
     path = cached_icon_path(icon_cache_dir(default_workspace_root()), prefab)
+    if path is None and mod_icons_dir() is not None:
+        path = cached_icon_path(mod_icons_dir(), prefab)
     if path is None:
         return None
     pixmap = QPixmap(str(path))

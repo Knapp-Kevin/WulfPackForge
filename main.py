@@ -7,6 +7,8 @@ from subscripts.logSetup import configure_logging, install_excepthook
 
 from ui.branding import APP_VERSION, app_icon
 from ui.mainWindow import MainWindow
+from subscripts.modOverride import apply_overrides
+from subscripts.workspace import default_workspace_root
 
 
 def _verify_catalog_bundle() -> bool:
@@ -34,6 +36,7 @@ def main():
     log_file = configure_logging()
     install_excepthook()
     logging.getLogger(__name__).info("Wulfpack Forge %s starting; log file: %s", APP_VERSION, log_file)
+    apply_overrides(default_workspace_root())  # scanned mod names and icons, if the user ran a mod scan
     app = QApplication(sys.argv)
     app.setWindowIcon(app_icon())
     window = MainWindow(startup_warning="--smoke-test" not in sys.argv)
