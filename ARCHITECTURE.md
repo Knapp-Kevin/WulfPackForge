@@ -46,9 +46,9 @@ Owns the player-facing desktop experience.
 - `saveStatusWidget.py` renders compact verification and compatibility state.
 - `branding.py` resolves Wulfpack Forge product metadata and bundled assets.
 - `appearanceTab.py`, `appearancePreview.py`, and `hdrColorControls.py` own appearance selection, the composed live preview, and guarded HDR colour editing; `newCharacterDialog.py` reuses that appearance surface for creation.
-- `inventoryTab.py`, `inventorySlot.py`, and `equipmentPanel.py` own the grid, drag-and-drop interactions, and derived equipped-slot summary; `itemPickerDialog.py` provides the category tree and search, while `itemEditDialog.py` handles constraints and durability-percent editing.
+- `inventoryTab.py`, `inventorySlot.py`, and `equipmentPanel.py` own the grid, drag-and-drop interactions, and derived equipped-slot summary; `itemPickerDialog.py` provides the category tree and search, while `itemEditDialog.py` handles constraints and durability-percent editing. `iconExtractionDialog.py` provides the opt-in game-icon workflow, and `variantPicker.py` resolves extracted pictures into labelled item styles.
 - `glyphs.py` renders, tints, caches, and validates original inventory and appearance artwork, with item fallback behavior resolved by `data/glyphs.py`.
-- `skillsTab.py` and `miscTab.py` own their respective controls and data mapping; `fieldTracker.py` supports preserve-by-default write-back.
+- `skillsTab.py` and `miscTab.py` own their respective controls and data mapping; `modScanDialog.py` provides the opt-in BepInEx profile scan. `recordTab.py` displays the read-only character summary, and `fieldTracker.py` supports preserve-by-default write-back.
 
 The UI should not bypass the workspace or save-safety layer.
 
@@ -66,9 +66,38 @@ Groups every save-like file (game folders: `*.fch`, `*.fch.old`, `_backup` copie
 
 ### `subscripts/characterDiscovery.py`
 
-Finds `.fch` files in supported local Valheim directories and Steam userdata locations.
+Finds `.fch` files in supported local Valheim directories and Steam userdata locations. On Windows, `HKCU\Software\Valve\Steam\SteamPath` is checked before the Program Files and `STEAM_DIR` fallbacks so non-default Steam installs participate in discovery.
 
 A Steam Cloud entry is discoverable only when a synchronized copy exists on disk. This component does not connect to remote Steam Cloud services.
+
+### Local asset discovery and mod overrides
+
+`subscripts/iconExtraction.py` reads the player's Valheim streaming bundles only after the player requests extraction. It resolves prefab → `ItemDrop` → icon references and writes PNGs plus `index.json` under `<workspace>/icons/`. `subscripts/variantIcons.py` and `ui/variantPicker.py` use those local copies to present picture-labelled styles. No extraction path writes to the game installation, transmits the result, or adds game artwork to the application bundle.
+
+`subscripts/modProfiles.py`, `modScan.py`, `stableHash.py`, and `modItems.py` discover a chosen BepInEx profile and scan plugin DLL bytes without loading or executing plugin code. Stable hashes label modded skill IDs. The UnityPy-enabled half reads item metadata and sprites from embedded asset bundles. `subscripts/modOverride.py` registers that local catalog at startup without replacing built-in item definitions.
+
+The version 1 mod override catalog is stored at `<workspace>/mods/catalog.json`. Its core shape is:
+
+```json
+{
+  "schema_version": 1,
+  "profile": "Profile name",
+  "skills": {"2143840399": "Sailing"},
+  "items": {
+    "ExamplePrefab": {
+      "display_name": "Example Item",
+      "item_type": "Material",
+      "max_stack": 20,
+      "max_quality": 1,
+      "variants": 1,
+      "icons": ["ExamplePrefab.png"],
+      "source": "ExamplePlugin.dll"
+    }
+  }
+}
+```
+
+The file also records `bepinex_dir` and `scanned_at` as operational metadata. Item icon files live under `<workspace>/mods/icons/`. Catalog data affects display and item discovery only; it does not execute the source plugin.
 
 ### `subscripts/fchUtil.py`
 
@@ -106,14 +135,19 @@ Default roots:
 - macOS: `~/Library/Application Support/WulfpackForge`
 - Linux: `$XDG_DATA_HOME/WulfpackForge` or `~/.local/share/WulfpackForge`
 
-Each active character receives a stable workspace containing:
+The workspace owns application state that must remain separate from Valheim and Steam:
 
 ```text
-characters/active/<character-id>/
-├── source/
-├── working/
-├── backups/
-└── metadata.json
+WulfpackForge/
+├── characters/active/<character-id>/
+│   ├── source/
+│   ├── working/
+│   ├── backups/
+│   └── metadata.json
+├── icons/                 # opt-in game-icon PNGs and index.json
+├── mods/                  # opt-in catalog.json and mod icon copies
+├── index/states.json      # character-state discovery cache
+└── logs/wulfpack-forge.log
 ```
 
 The workspace directory is keyed by the character's identity (`player_id` and creation stamp), so every copy of a character shares one workspace. When a character is opened, the source must pass strict verification before the workspace is created. The workspace records an immutable source snapshot, a verified working copy, and the expected SHA-256 of the active source. The source snapshot is not edited during the session.
@@ -141,9 +175,13 @@ Separates discoverability metadata from write policy.
 - `item_groups.py` and `equipment.py` provide player-facing catalog navigation and equipment-role/slot rules.
 - `glyphs.py` and `appearance.py` map catalog data to presentation-only item glyphs and appearance choices.
 - `durability.py` and `valheim_durability.json` provide wiki-derived numeric maximum-durability facts and guarded calculations.
-- `skills.py` and `powers.py` provide the supported player-facing names for those save fields.
+- `skills.py` and `biomes.py` provide the supported player-facing names for those save fields.
 
 A catalog refresh must not silently alter write constraints.
+
+### Optional dependencies
+
+UnityPy is deliberately outside `requirements.txt`. Features that need it first query `importlib.util.find_spec("UnityPy")`; the extraction is offered only when the module is discoverable, and imports occur inside the requested extraction path rather than during application startup. Without UnityPy, Game Icons disables extraction with an installation hint, mod scanning still resolves skills, and the mod-item half reports itself unavailable. This keeps the core editor operational without a large optional codec stack.
 
 ### `tools/`
 
@@ -220,7 +258,7 @@ The bundle includes:
 - `data/valheim_durability.json`;
 - `assets/wulfpack-forge-banner.jpg` and `assets/FrostWulf-favicon.png`;
 - the embedded `assets/wulfpack-forge.ico` Windows icon;
-- `assets/glyphs/items/` with 34 original inventory masters;
+- the original inventory masters under `assets/glyphs/items/`;
 - all hairstyle and beard thumbnails under `assets/glyphs/hair/` and `assets/glyphs/beard/`.
 
 The packaged smoke test verifies that critical generated, branding, and glyph assets can be resolved and decoded from the PyInstaller runtime environment. It checks objective runtime properties, not subjective art quality.

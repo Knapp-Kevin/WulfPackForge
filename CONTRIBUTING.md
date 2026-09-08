@@ -47,10 +47,18 @@ python -m compileall data subscripts ui tools main.py
 - source files must not exceed 250 lines;
 - functions must not exceed 40 lines;
 - control-flow nesting must not exceed three levels;
+- nested ternaries are prohibited;
 - star imports are prohibited;
-- PySide6 imports belong only under `ui/`.
+- PySide6 imports belong only under `ui/`;
+- signal connections must not use lambdas that capture `self`.
 
 Keep new code inside these limits instead of weakening the test. Run the Razor test directly with `python -m unittest tests.test_razor` when restructuring code.
+
+### Qt and worker-test rules
+
+Every test module that builds a Qt widget must derive its test classes from `tests.qt_support.QtTestCase`, which owns deterministic widget cleanup. If such a class defines `tearDown`, it must call `super().tearDown()`.
+
+Tests that wait for a worker thread must use a real time deadline. Never wait for an arbitrary iteration count: machine and CI speeds vary, and a loop count turns scheduling luck into a test contract. Keep the timeout finite, process Qt events while waiting when required, and fail with enough context to identify the worker that did not finish.
 
 ## Branches
 
