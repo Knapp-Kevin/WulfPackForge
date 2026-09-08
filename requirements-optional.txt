@@ -1,0 +1,3 @@
+# Optional: item icon extraction from the player's own Valheim installation (Inventory > Game Icons).
+# Not installed by CI and not part of the packaged executable; the feature reports itself unavailable without it.
+UnityPy>=1.25,<2
