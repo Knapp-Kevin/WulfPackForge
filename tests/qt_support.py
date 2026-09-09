@@ -11,15 +11,14 @@ import unittest
 from PySide6.QtCore import QEvent
 from PySide6.QtWidgets import QApplication
 
+from ui import lifetime
+
 
 def dispose(widget) -> None:
-    if widget is None:
-        return
-    widget.close()
-    widget.deleteLater()
+    """The product helper, plus the collect only tests need."""
+    lifetime.dispose(widget)
     app = QApplication.instance()
     if app is not None:
-        app.sendPostedEvents(None, QEvent.DeferredDelete)
         app.processEvents()
     gc.collect()
 

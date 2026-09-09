@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 
 from data.skills import VALHEIM_SKILLS
+from ui.lifetime import modal
 from subscripts.modOverride import apply_overrides, skill_label
 from subscripts.workspace import default_workspace_root
 from ui.modScanDialog import ModScanDialog
@@ -70,10 +71,10 @@ class SkillsTab(QWidget):
         return toolbar
 
     def open_mod_scan(self):
-        dialog = ModScanDialog(self)
-        dialog.scanned.connect(self._mods_scanned)
-        dialog.exec()
-        dialog.shutdown()
+        with modal(ModScanDialog(self)) as dialog:
+            dialog.scanned.connect(self._mods_scanned)
+            dialog.exec()
+            dialog.shutdown()
 
     def _mods_scanned(self, _report):
         apply_overrides(default_workspace_root())

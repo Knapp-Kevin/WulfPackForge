@@ -10,6 +10,7 @@ from PySide6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QPushButton, QVBox
 
 from subscripts.characterRecords import find_state
 from ui.characterStatesDialog import CharacterStatesDialog
+from ui.lifetime import modal
 
 logger = logging.getLogger(__name__)
 SCANNING_LABEL = "Scanning for characters…"
@@ -189,10 +190,10 @@ class CharacterPickerBar(QWidget):
         record = self.current_record()
         if record is None:
             return
-        dialog = CharacterStatesDialog(record, self)
-        dialog.open_requested.connect(self.open_requested)
-        dialog.restore_requested.connect(self.restore_requested)
-        dialog.exec()
+        with modal(CharacterStatesDialog(record, self)) as dialog:
+            dialog.open_requested.connect(self.open_requested)
+            dialog.restore_requested.connect(self.restore_requested)
+            dialog.exec()
 
     def _emit_open(self):
         path = self.character_combo.currentData()

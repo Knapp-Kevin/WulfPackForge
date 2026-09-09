@@ -20,6 +20,8 @@ from ui.inventorySlot import InventorySlot
 from ui.itemEditDialog import REMOVE_ITEM, ItemEditDialog
 from ui.itemPickerDialog import ItemPickerDialog
 from ui.iconExtractionDialog import IconExtractionDialog
+from ui.lifetime import modal
+from subscripts.playerDataUtil import new_inventory_item
 from ui.glyphs import clear_cache
 
 class InventoryTab(QWidget):
@@ -61,9 +63,15 @@ class InventoryTab(QWidget):
         self.init_empty_grid()
 
     def init_empty_grid(self):
-        for i in reversed(range(self.grid_layout.count())): 
-            self.grid_layout.itemAt(i).widget().setParent(None)
-        
+        # takeAt transfers the layout item to us; the previous form, itemAt(i).widget().setParent(None),
+        # left it owned by the layout while we reparented its widget, and caused a native crash that
+        # surfaced much later in an unrelated dialog. Measured: 5 of 6 runs crashed before, 0 of 6 after.
+        # Why exactly it corrupted state is unresolved; see docs/plan-qor-phase40-layout-item-uaf.md.
+        while self.grid_layout.count():
+            taken = self.grid_layout.takeAt(0)
+            widget = taken.widget()
+            if widget is not None:
+                widget.setParent(None)
         self.slots.clear()
 
         for y in range(self.GRID_HEIGHT):
@@ -77,10 +85,10 @@ class InventoryTab(QWidget):
                 self.slots[(x, y)] = slot
 
     def open_game_icons(self):
-        dialog = IconExtractionDialog(self)
-        dialog.extracted.connect(self._icons_extracted)
-        dialog.exec()
-        dialog.shutdown()
+        with modal(IconExtractionDialog(self)) as dialog:
+            dialog.extracted.connect(self._icons_extracted)
+            dialog.exec()
+            dialog.shutdown()
 
     def _icons_extracted(self, _report):
         clear_cache()
@@ -139,16 +147,15 @@ class InventoryTab(QWidget):
     def edit_slot_item(self, slot: InventorySlot):
         if not self.player_data or not slot.item_data:
             return
-        dialog = ItemEditDialog(slot.item_data, self)
-        result = dialog.exec()
-        if result == REMOVE_ITEM:
-            self.delete_slot_item(slot)
-        elif result == QDialog.Accepted:
-            updated = dialog.get_updated_data()
-            slot.item_data.update(updated)
-            slot.update_visuals()
-            self._enforce_equip_rule(slot.item_data)
-            self._refresh_panel()
+        with modal(ItemEditDialog(slot.item_data, self)) as dialog:
+            result = dialog.exec()
+            if result == REMOVE_ITEM:
+                self.delete_slot_item(slot)
+            elif result == QDialog.Accepted:
+                slot.item_data.update(dialog.get_updated_data())
+                slot.update_visuals()
+                self._enforce_equip_rule(slot.item_data)
+                self._refresh_panel()
 
     def delete_slot_item(self, slot: InventorySlot, confirm: bool = True):
         """Take the slot's item out of the inventory; every removal path ends here."""
@@ -164,43 +171,30 @@ class InventoryTab(QWidget):
             )
             if answer != QMessageBox.Yes:
                 return
-        if slot.item_data in self.player_data["inventory"]:
-            self.player_data["inventory"].remove(slot.item_data)
+        inventory = self.player_data.setdefault("inventory", [])
+        if slot.item_data in inventory:
+            inventory.remove(slot.item_data)
         slot.clear_item()
         self._refresh_panel()
 
     def add_item_to_slot(self, slot: InventorySlot):
         if not self.player_data:
             return
-        picker = ItemPickerDialog(self)
-        if picker.exec() != QDialog.Accepted or not picker.selected_prefab:
+        with modal(ItemPickerDialog(self)) as picker:
+            accepted = picker.exec() == QDialog.Accepted
+            prefab = picker.selected_prefab
+        if not accepted or not prefab:
             return
 
-        new_item = {
-            "prefab": picker.selected_prefab,
-            "stack": 1,
-            "durability": default_durability(picker.selected_prefab),
-            "grid_x": slot.grid_x,
-            "grid_y": slot.grid_y,
-            "equipped": False,
-            "quality": 1,
-            "variant": 0,
-            "crafter_id": 0,
-            "crafter_name": "",
-            "custom_data": {},
-            "world_level": 0,
-            "picked_up": True
-        }
-
-        dialog = ItemEditDialog(new_item, self)
-        if dialog.exec() == QDialog.Accepted:
-            final_item = dialog.get_updated_data()
-            new_item.update(final_item)
-            
-            self.player_data["inventory"].append(new_item)
-            slot.set_item(new_item)
-            self._enforce_equip_rule(new_item)
-            self._refresh_panel()
+        new_item = new_inventory_item(prefab, slot.grid_x, slot.grid_y, default_durability(prefab))
+        with modal(ItemEditDialog(new_item, self)) as dialog:
+            if dialog.exec() != QDialog.Accepted:
+                return
+            new_item.update(dialog.get_updated_data())
+        self.player_data.setdefault("inventory", []).append(new_item)
+        slot.set_item(new_item)
+        self._enforce_equip_rule(new_item)
+        self._refresh_panel()
 
     def _refresh_panel(self):
         if self.player_data is not None:

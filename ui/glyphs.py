@@ -13,7 +13,8 @@ from subscripts.modOverride import mod_icons_dir
 from subscripts.workspace import default_workspace_root
 from ui.branding import resource_path
 
-_CACHE: Dict[Tuple[str, str, int], QPixmap] = {}
+# Two key widths are in use: (label, tint, size) and ("extracted", prefab, size, variant).
+_CACHE: Dict[Tuple[Union[str, int], ...], QPixmap] = {}
 GLYPH_MASTER_SIZE = 512
 
 
