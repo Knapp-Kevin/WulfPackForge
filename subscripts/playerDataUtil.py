@@ -5,13 +5,37 @@ payload. Strings use ``surrogateescape`` so non-UTF-8 bytes survive, and the
 reader refuses to return a payload that still has unconsumed bytes.
 """
 from subscripts.fchUtil import BinaryReader, BinaryWriter, STRING_ERRORS
+from subscripts.saveErrors import SaveFormatError
 
 __all__ = ["BinaryReader", "BinaryWriter", "STRING_ERRORS", "PlayerDataReader", "PlayerDataWriter",
            "SUPPORTED_PLAYER_DATA_VERSIONS", "payload_is_supported", "unpack_player_data_hex", "pack_player_data_hex"]
 
 # (version, inventory_version, skill_version) triples whose layout this codec
-# reads exactly. Any other triple parses on a best-effort basis but is not writable.
+# reads exactly. A payload outside this set still parses on a best-effort basis and is
+# reported unwritable by payload_is_supported, which keeps such a character openable
+# read-only. A payload whose layout this build cannot read at all fails inside the body;
+# _restate_body_failure restates that failure in terms of the payload version, so the
+# operator is told the save is from a newer Valheim instead of being shown a byte count.
 SUPPORTED_PLAYER_DATA_VERSIONS = frozenset({(29, 106, 2)})
+
+
+READABLE_PAYLOAD_VERSIONS = frozenset(triple[0] for triple in SUPPORTED_PLAYER_DATA_VERSIONS)
+
+
+def _restate_body_failure(version: int, cause: SaveFormatError) -> SaveFormatError:
+    """Name the payload version when its layout is the reason the body could not be read.
+
+    A body failure on a version this build knows is corruption, and keeps its original
+    message. A body failure on a version it does not know is a newer save format, and is
+    restated so the operator is told that rather than shown a byte count.
+    """
+    if version in READABLE_PAYLOAD_VERSIONS:
+        return cause
+    known = ", ".join(str(v) for v in sorted(READABLE_PAYLOAD_VERSIONS))
+    return SaveFormatError(
+        f"Player data version {version} could not be read by this build, which reads "
+        f"version {known}. The save is from a newer Valheim."
+    )
 
 
 def payload_is_supported(player_data: dict) -> bool:
@@ -34,6 +58,25 @@ def _read_string_dict(pkg: BinaryReader) -> dict:
 
 def _read_string_list(pkg: BinaryReader) -> list:
     return [pkg.read_string() for _ in range(pkg.read_int32())]
+
+
+def new_inventory_item(prefab: str, grid_x: int, grid_y: int, durability: float) -> dict:
+    """A fresh inventory record with every field the writer expects, at defaults."""
+    return {
+        "prefab": prefab,
+        "stack": 1,
+        "durability": durability,
+        "grid_x": grid_x,
+        "grid_y": grid_y,
+        "equipped": False,
+        "quality": 1,
+        "variant": 0,
+        "crafter_id": 0,
+        "crafter_name": "",
+        "custom_data": {},
+        "world_level": 0,
+        "picked_up": True,
+    }
 
 
 def _read_item(pkg: BinaryReader) -> dict:
@@ -70,34 +113,37 @@ def unpack_player_data_hex(hex_string: str) -> dict:
     raw_bytes = bytes.fromhex(hex_string)
     pkg = BinaryReader(raw_bytes)
     out = {"version": pkg.read_int32()}
-    out["max_health"] = pkg.read_float()
-    out["health"] = pkg.read_float()
-    out["max_stamina"] = pkg.read_float()
-    out["time_since_death"] = pkg.read_float()
-    out["guardian_power"] = pkg.read_string()
-    out["guardian_power_cooldown"] = pkg.read_float()
-    out["inventory_version"] = pkg.read_int32()
-    out["inventory"] = [_read_item(pkg) for _ in range(pkg.read_int32())]
-    out["known_recipes"] = _read_string_list(pkg)
-    out["known_stations"] = {pkg.read_string(): pkg.read_int32() for _ in range(pkg.read_int32())}
-    out["known_material"] = _read_string_list(pkg)
-    out["shown_tutorials"] = _read_string_list(pkg)
-    out["uniques"] = _read_string_list(pkg)
-    out["trophies"] = _read_string_list(pkg)
-    out["known_biomes"] = [pkg.read_int32() for _ in range(pkg.read_int32())]
-    out["known_texts"] = _read_string_dict(pkg)
-    _read_appearance(pkg, out)
-    out["foods"] = [{"name": pkg.read_string(), "time": pkg.read_float()} for _ in range(pkg.read_int32())]
-    out["skill_version"] = pkg.read_int32()
-    out["skills"] = [
-        {"id": pkg.read_int32(), "level": pkg.read_float(), "xp": pkg.read_float()}
-        for _ in range(pkg.read_int32())
-    ]
-    out["custom_data"] = _read_string_dict(pkg)
-    out["stamina"] = pkg.read_float()
-    out["max_eitr"] = pkg.read_float()
-    out["eitr"] = pkg.read_float()
-    pkg.require_exhausted("player data payload")
+    try:
+        out["max_health"] = pkg.read_float()
+        out["health"] = pkg.read_float()
+        out["max_stamina"] = pkg.read_float()
+        out["time_since_death"] = pkg.read_float()
+        out["guardian_power"] = pkg.read_string()
+        out["guardian_power_cooldown"] = pkg.read_float()
+        out["inventory_version"] = pkg.read_int32()
+        out["inventory"] = [_read_item(pkg) for _ in range(pkg.read_int32())]
+        out["known_recipes"] = _read_string_list(pkg)
+        out["known_stations"] = {pkg.read_string(): pkg.read_int32() for _ in range(pkg.read_int32())}
+        out["known_material"] = _read_string_list(pkg)
+        out["shown_tutorials"] = _read_string_list(pkg)
+        out["uniques"] = _read_string_list(pkg)
+        out["trophies"] = _read_string_list(pkg)
+        out["known_biomes"] = [pkg.read_int32() for _ in range(pkg.read_int32())]
+        out["known_texts"] = _read_string_dict(pkg)
+        _read_appearance(pkg, out)
+        out["foods"] = [{"name": pkg.read_string(), "time": pkg.read_float()} for _ in range(pkg.read_int32())]
+        out["skill_version"] = pkg.read_int32()
+        out["skills"] = [
+            {"id": pkg.read_int32(), "level": pkg.read_float(), "xp": pkg.read_float()}
+            for _ in range(pkg.read_int32())
+        ]
+        out["custom_data"] = _read_string_dict(pkg)
+        out["stamina"] = pkg.read_float()
+        out["max_eitr"] = pkg.read_float()
+        out["eitr"] = pkg.read_float()
+        pkg.require_exhausted("player data payload")
+    except SaveFormatError as exc:
+        raise _restate_body_failure(out["version"], exc) from exc
     return out
 
 

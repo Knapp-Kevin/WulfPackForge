@@ -11,6 +11,7 @@ from ui.miscTab import MiscTab
 from ui.recordTab import RecordTab
 from ui.saveStatusWidget import SaveStatusWidget
 from subscripts.valheim_detection import ScanState, ValheimScan, scan_valheim, valheim_warning_message
+from ui.lifetime import modal
 from ui.branding import APP_WINDOW_TITLE
 from ui.brandBanner import BANNER_MAX_HEIGHT, BANNER_MIN_HEIGHT, BrandBanner, banner_height_for
 from ui.characterPicker import CharacterPickerBar
@@ -70,9 +71,9 @@ class MainWindow(QMainWindow):
         scan = scan_valheim()
         if scan.state != ScanState.RUNNING:
             return
-        msg = QMessageBox(QMessageBox.Warning, "Valheim Running", valheim_warning_message(scan), QMessageBox.Ok, self)
-        msg.setInformativeText(messages.STARTUP_RUNNING_INFO)
-        msg.exec()
+        with modal(QMessageBox(QMessageBox.Warning, "Valheim Running", valheim_warning_message(scan), QMessageBox.Ok, self)) as msg:
+            msg.setInformativeText(messages.STARTUP_RUNNING_INFO)
+            msg.exec()
 
     def closeEvent(self, event):
         self.picker.shutdown()
@@ -120,8 +121,8 @@ class MainWindow(QMainWindow):
         return report
 
     def create_new_character(self):
-        dialog = NewCharacterDialog(self)
-        spec = dialog.result_spec() if dialog.exec() == QDialog.Accepted else None
+        with modal(NewCharacterDialog(self)) as dialog:
+            spec = dialog.result_spec() if dialog.exec() == QDialog.Accepted else None
         if spec is None:
             return
         try:

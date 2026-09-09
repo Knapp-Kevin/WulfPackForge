@@ -28,8 +28,12 @@ class SaveHealthTests(unittest.TestCase):
         self.assertIn("checksum and structure verified", report.detail.lower())
         self.assertIn("protected workspace snapshot", report.detail.lower())
 
-    def test_versions_40_to_43_are_writable_and_others_are_not(self):
-        self.assertEqual(SUPPORTED_CHARACTER_SAVE_VERSIONS, frozenset({40, 41, 42, 43}))
+    def test_versions_40_to_43_and_46_are_writable_and_others_are_not(self):
+        self.assertEqual(SUPPORTED_CHARACTER_SAVE_VERSIONS, frozenset({40, 41, 42, 43, 46}))
+
+        v46 = build_save_health_report(valid=True, version=46, source="Local", modified_at=None)
+        self.assertEqual(v46.state, SAVE_STATE_VERIFIED)
+        self.assertTrue(v46.writable)
 
         writable = build_save_health_report(valid=True, version=41, source="Local", modified_at=None)
         self.assertEqual(writable.state, SAVE_STATE_VERIFIED)

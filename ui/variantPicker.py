@@ -1,7 +1,7 @@
 """Choose an item style by picture: a combo of the variant icons with an approximate colour name."""
 from typing import List
 
-from PySide6.QtCore import QObject, QSize
+from PySide6.QtCore import QObject, QSize, Signal
 from PySide6.QtGui import QColor, QIcon, QImage, QPixmap
 
 from subscripts.variantIcons import variant_icon_paths
@@ -67,11 +67,19 @@ def populate_variant_combo(combo, prefab: str) -> int:
 
 
 class StyleSync(QObject):
-    """Keeps a style combo and the numeric variant field in step; ``on_change(value)`` fires on either."""
+    """Keeps a style combo and the numeric variant field in step; ``changed`` fires on either.
 
-    def __init__(self, combo, spin, on_change):
+    The value travels out through a Qt signal rather than a stored callback. A callback held as
+    a plain attribute closes a ``dialog -> sync -> dialog`` reference cycle, which reference
+    counting cannot break, so the owning dialog would be freed by the cyclic collector at a
+    moment of Python's choosing instead of when its last reference goes.
+    """
+
+    changed = Signal(int)
+
+    def __init__(self, combo, spin):
         super().__init__(combo)
-        self.combo, self.spin, self.on_change = combo, spin, on_change
+        self.combo, self.spin = combo, spin
         combo.currentIndexChanged.connect(self._style_chosen)
         spin.valueChanged.connect(self._variant_typed)
 
@@ -90,4 +98,4 @@ class StyleSync(QObject):
         position = self.combo.findData(value)
         if position != self.combo.currentIndex():
             self.combo.setCurrentIndex(position)
-        self.on_change(value)
+        self.changed.emit(value)

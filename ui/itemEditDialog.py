@@ -69,7 +69,8 @@ class ItemEditDialog(QDialog):
         self.quality_input = _spin(int(item_data.get("quality", 1)), 0, 99)
         self.variant_input = _spin(int(item_data.get("variant", 0)), 0, 999)
         self.variant_combo = QComboBox()  # style by picture, when the icons were extracted
-        self.styles = StyleSync(self.variant_combo, self.variant_input, self._variant_changed)
+        self.styles = StyleSync(self.variant_combo, self.variant_input)
+        self.styles.changed.connect(self._variant_changed)
         self.equipped_input = QCheckBox()
         self.equipped_input.setChecked(item_data.get("equipped", False))
 

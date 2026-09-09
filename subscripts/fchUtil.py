@@ -13,10 +13,12 @@ import sys
 
 from subscripts.binaryIO import STRING_ERRORS, BinaryReader, BinaryWriter
 from subscripts.saveErrors import SaveFormatError
+from subscripts.statRecords import read_stat_records, write_stat_records
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["BinaryReader", "BinaryWriter", "STRING_ERRORS", "MIN_CHARACTER_SAVE_VERSION", "CURRENT_CHARACTER_SAVE_VERSION",
+__all__ = ["BinaryReader", "BinaryWriter", "STRING_ERRORS", "MIN_CHARACTER_SAVE_VERSION", "MAX_CHARACTER_SAVE_VERSION", "CURRENT_CHARACTER_SAVE_VERSION",
+           "READABLE_CHARACTER_SAVE_VERSIONS", "V46_STAT_RECORDS",
            "parse_save", "serialize_save", "decompile_fch", "compile_fch", "write_fch_bytes"]
 USAGE = (
     "Valheim Save File Utility v{version}\n"
@@ -27,8 +29,13 @@ USAGE = (
 
 # Real saves from version 40 onward round-trip byte-identical through this codec.
 # Older layouts differ in fields this module does not gate on, so they are refused.
+# 44 and 45 are refused too: the game gates its moved stat block on version >= 46 or
+# version == 44, so 45 has no defined layout and 44 cannot be verified without a sample.
 MIN_CHARACTER_SAVE_VERSION = 40
-CURRENT_CHARACTER_SAVE_VERSION = 43
+MAX_CHARACTER_SAVE_VERSION = 46
+CURRENT_CHARACTER_SAVE_VERSION = 46
+READABLE_CHARACTER_SAVE_VERSIONS = frozenset({40, 41, 42, 43, 46})
+V46_STAT_RECORDS = 10
 
 
 # ---------------------------------------------------------------- parsing
@@ -47,15 +54,36 @@ def _read_world(pkg: BinaryReader, version: int) -> dict:
     return world
 
 
+def _require_readable_version(version: int) -> None:
+    """Refuse a container version by name rather than by a downstream short read."""
+    if version not in READABLE_CHARACTER_SAVE_VERSIONS:
+        supported = ", ".join(str(known) for known in sorted(READABLE_CHARACTER_SAVE_VERSIONS))
+        raise SaveFormatError(
+            f"Character save version {version} is not one this build can read exactly "
+            f"(supported: {supported})."
+        )
+
+
+def _read_stat_block(pkg: BinaryReader, save_data: dict) -> None:
+    """Version 46 stores ten statistics records here; earlier versions store one flat array."""
+    if save_data["version"] < 46:
+        save_data["stats"] = [pkg.read_float() for _ in range(pkg.read_int32())]
+        return
+    save_data["stat_length"] = pkg.read_int32()
+    count = pkg.read_int32()
+    if count != V46_STAT_RECORDS:
+        raise SaveFormatError(
+            f"Character save declares {count} statistics records; version 46 always writes "
+            f"{V46_STAT_RECORDS}."
+        )
+    save_data["stat_records"] = read_stat_records(pkg, count, save_data["stat_length"])
+
+
 def _read_zpackage(pkg: BinaryReader) -> dict:
     version = pkg.read_int32()
-    if version < MIN_CHARACTER_SAVE_VERSION:
-        raise SaveFormatError(
-            f"Character save version {version} is older than the minimum {MIN_CHARACTER_SAVE_VERSION} "
-            "this build can read exactly."
-        )
+    _require_readable_version(version)
     save_data = {"version": version}
-    save_data["stats"] = [pkg.read_float() for _ in range(pkg.read_int32())]
+    _read_stat_block(pkg, save_data)
     save_data["first_spawn"] = pkg.read_bool()
     save_data["worlds"] = [_read_world(pkg, version) for _ in range(pkg.read_int32())]
     save_data["character_name"] = pkg.read_string()
@@ -63,13 +91,14 @@ def _read_zpackage(pkg: BinaryReader) -> dict:
     save_data["start_seed"] = pkg.read_string()
     save_data["used_cheats"] = pkg.read_bool()
     save_data["date_created_unix"] = pkg.read_long()
-    save_data["known_worlds"] = pkg.read_float_dict()
-    save_data["known_world_keys"] = pkg.read_float_dict()
-    save_data["known_commands"] = pkg.read_float_dict()
-    if version >= 42:
-        save_data["enemy_stats"] = pkg.read_float_dict()
-        save_data["item_pickup_stats"] = pkg.read_float_dict()
-        save_data["item_craft_stats"] = pkg.read_float_dict()
+    if version < 46:
+        save_data["known_worlds"] = pkg.read_float_dict()
+        save_data["known_world_keys"] = pkg.read_float_dict()
+        save_data["known_commands"] = pkg.read_float_dict()
+        if version >= 42:
+            save_data["enemy_stats"] = pkg.read_float_dict()
+            save_data["item_pickup_stats"] = pkg.read_float_dict()
+            save_data["item_craft_stats"] = pkg.read_float_dict()
     save_data["player_data_hex"] = pkg.read_byte_array().hex() if pkg.read_bool() else None
     pkg.require_exhausted("character container")
     return save_data
@@ -114,13 +143,23 @@ def _write_world(pkg: BinaryWriter, world: dict, version: int) -> None:
         pkg.write_byte_array(bytes.fromhex(map_data_hex))
 
 
+def _write_stat_block(pkg: BinaryWriter, save_data: dict) -> None:
+    """Mirror of ``_read_stat_block``; the version already written selects the shape."""
+    if save_data["version"] < 46:
+        pkg.write_int32(len(save_data["stats"]))
+        for stat in save_data["stats"]:
+            pkg.write_float(stat)
+        return
+    pkg.write_int32(save_data["stat_length"])
+    pkg.write_int32(len(save_data["stat_records"]))
+    write_stat_records(pkg, save_data["stat_records"])
+
+
 def _write_zpackage(save_data: dict) -> bytes:
     pkg = BinaryWriter()
     version = save_data["version"]
     pkg.write_int32(version)
-    pkg.write_int32(len(save_data["stats"]))
-    for stat in save_data["stats"]:
-        pkg.write_float(stat)
+    _write_stat_block(pkg, save_data)
     pkg.write_bool(save_data["first_spawn"])
     pkg.write_int32(len(save_data["worlds"]))
     for world in save_data["worlds"]:
@@ -130,13 +169,14 @@ def _write_zpackage(save_data: dict) -> bytes:
     pkg.write_string(save_data["start_seed"])
     pkg.write_bool(save_data["used_cheats"])
     pkg.write_long(save_data["date_created_unix"])
-    pkg.write_float_dict(save_data["known_worlds"])
-    pkg.write_float_dict(save_data["known_world_keys"])
-    pkg.write_float_dict(save_data["known_commands"])
-    if version >= 42:
-        pkg.write_float_dict(save_data["enemy_stats"])
-        pkg.write_float_dict(save_data["item_pickup_stats"])
-        pkg.write_float_dict(save_data["item_craft_stats"])
+    if version < 46:
+        pkg.write_float_dict(save_data["known_worlds"])
+        pkg.write_float_dict(save_data["known_world_keys"])
+        pkg.write_float_dict(save_data["known_commands"])
+        if version >= 42:
+            pkg.write_float_dict(save_data["enemy_stats"])
+            pkg.write_float_dict(save_data["item_pickup_stats"])
+            pkg.write_float_dict(save_data["item_craft_stats"])
     player_data_hex = save_data["player_data_hex"]
     pkg.write_bool(player_data_hex is not None)
     if player_data_hex is not None:
