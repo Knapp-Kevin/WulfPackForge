@@ -49,3 +49,14 @@ def saved_ok(destination: str, backup_path) -> str:
         text += f"\n\nPrevious save backed up in the Wulfpack Forge workspace:\n{backup_path}"
     return text + ("\n\nThe working copy passed checksum and round-trip verification, and the active file "
                    "was confirmed unchanged before replacement.")
+
+
+def previous_session_crashed(report_path) -> str:
+    return (
+        "The previous session ended unexpectedly.\n\n"
+        f"A crash report was saved to:\n{report_path}\n\n"
+        "Your character files were not affected.\n\n"
+        "The report holds what the program itself was doing at the moment it stopped: function "
+        "names, source file paths (which include your account name), and line numbers. It "
+        "contains no character or save data. Read it before sharing it."
+    )
