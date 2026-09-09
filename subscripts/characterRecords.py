@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Tuple
 
 from subscripts.characterDiscovery import candidate_character_directories
+from subscripts.playerDataUtil import unpack_player_data_hex
 from subscripts.saveErrors import SaveFormatError
 from subscripts.saveSafety import verify_fch_round_trip
 from subscripts.workspace import default_workspace_root
@@ -133,6 +134,7 @@ class StateCache:
 def _identity_fields(path: Path) -> dict:
     try:
         parsed = verify_fch_round_trip(str(path))
+        unpack_player_data_hex(parsed.get("player_data_hex") or "")
         name = (parsed.get("character_name") or path.stem).strip() or path.stem
         return {"name": name, "player_id": parsed.get("player_id"), "date_created": parsed.get("date_created_unix"),
                 "version": parsed.get("version"), "valid": True, "error": None}

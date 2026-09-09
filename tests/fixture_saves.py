@@ -111,3 +111,32 @@ def write_fch(path, root_save: dict) -> Path:
     path = Path(path)
     path.write_bytes(serialize_save(root_save))
     return path
+
+
+def _stat_record(populated: bool) -> dict:
+    """One PlayerStats record. Only record 0 is populated in a real 1.0 save."""
+    empty: dict = {}
+    return {
+        "stats": [1.0, 2.0, 3.5] if populated else [0.0, 0.0, 0.0],
+        "known_worlds": {"WorldA": 1.5} if populated else empty,
+        "known_world_keys": {"defeated_eikthyr": 1.0} if populated else empty,
+        "known_commands": {"god": 1.0} if populated else empty,
+        "enemy_stats": [{"$enemy_boar": 12.0}] if populated else [],
+        "item_pickup_stats": {"$item_wood": 300.0} if populated else empty,
+        "item_craft_stats": {"$item_swordbronze": 1.0} if populated else empty,
+        "pickable_stats": {"Raspberry": 4.0} if populated else empty,
+        "food_eaten_stats": empty,
+        "pieces_placed_stats": empty,
+    }
+
+
+def realistic_v46_root_save(player_hex: str | None = None, name: str = "Frostwülf") -> dict:
+    """A Valheim 1.0 container: ten stat records, only the first populated."""
+    base = realistic_root_save(player_hex=player_hex, name=name)
+    for key in ("stats", "known_worlds", "known_world_keys", "known_commands",
+                "enemy_stats", "item_pickup_stats", "item_craft_stats"):
+        base.pop(key)
+    base["version"] = 46
+    base["stat_length"] = 3
+    base["stat_records"] = [_stat_record(index == 0) for index in range(10)]
+    return base

@@ -58,5 +58,38 @@ class PlayerDataCodecTests(unittest.TestCase):
         self.assertFalse(payload_is_supported(data))
 
 
+
+
+class UnreadablePayloadRestatementTests(unittest.TestCase):
+    """A payload body this build cannot parse is restated in terms of its version."""
+
+    def _unreadable(self, version: int) -> str:
+        """A payload stamped ``version`` whose body this build cannot parse."""
+        payload = realistic_player_data()
+        payload["version"] = version
+        return pack_player_data_hex(payload)[:80]
+
+    def test_an_unreadable_newer_payload_names_its_version_not_a_byte_count(self):
+        with self.assertRaises(SaveFormatError) as caught:
+            unpack_player_data_hex(self._unreadable(33))
+        message = str(caught.exception)
+        self.assertIn("33", message)
+        self.assertIn("newer Valheim", message)
+        self.assertNotIn("wanted", message)
+
+    def test_a_corrupt_known_version_payload_keeps_its_original_error(self):
+        with self.assertRaises(SaveFormatError) as caught:
+            unpack_player_data_hex(self._unreadable(29))
+        self.assertIn("wanted", str(caught.exception))
+
+    def test_a_newer_payload_that_still_parses_stays_readable(self):
+        payload = realistic_player_data()
+        payload["version"] = 30
+        self.assertEqual(unpack_player_data_hex(pack_player_data_hex(payload))["version"], 30)
+
+    def test_an_empty_payload_still_returns_empty(self):
+        self.assertEqual(unpack_player_data_hex(""), {})
+
+
 if __name__ == "__main__":
     unittest.main()

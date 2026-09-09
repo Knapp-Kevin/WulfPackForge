@@ -13,7 +13,7 @@ from subscripts.fchUtil import (
     serialize_save,
 )
 from subscripts.saveErrors import SaveFormatError
-from tests.fixture_saves import realistic_root_save
+from tests.fixture_saves import realistic_root_save, realistic_v46_root_save
 
 
 def _reframe(zpackage: bytes) -> bytes:
@@ -63,6 +63,39 @@ class FchCodecTests(unittest.TestCase):
             compile_fch(str(wrapper), str(output))
             self.assertEqual(output.read_bytes(), serialize_save(root))
             self.assertEqual(decompile_fch(str(output)), parse_save(serialize_save(root)))
+
+
+class V46ContainerTests(unittest.TestCase):
+    """Valheim 1.0 raised the container to version 46 and moved the stat block."""
+
+    def test_v46_container_round_trips_byte_identically(self):
+        data = serialize_save(realistic_v46_root_save())
+        parsed = parse_save(data)
+        self.assertEqual(serialize_save(parsed), data)
+        self.assertEqual(len(parsed["stat_records"]), 10)
+        self.assertIsInstance(parsed["stat_records"][0]["enemy_stats"], list)
+
+    def test_saving_a_v43_save_writes_v43_not_v46(self):
+        data = serialize_save(realistic_root_save())
+        parsed = parse_save(data)
+        self.assertEqual(parsed["version"], 43)
+        self.assertEqual(serialize_save(parsed), data)
+
+    def test_versions_outside_the_supported_set_are_refused_by_name(self):
+        for version in (44, 45, 47):
+            with self.subTest(version=version):
+                broken = _reframe(struct.pack("<i", version) + b"\x00" * 32)
+                with self.assertRaises(SaveFormatError) as caught:
+                    parse_save(broken)
+                message = str(caught.exception)
+                self.assertIn(str(version), message)
+                self.assertNotIn("wanted", message)
+
+    def test_a_declared_record_count_other_than_ten_is_refused(self):
+        header = struct.pack("<iii", 46, 3, 11)
+        with self.assertRaises(SaveFormatError) as caught:
+            parse_save(_reframe(header + b"\x00" * 64))
+        self.assertIn("11", str(caught.exception))
 
 
 if __name__ == "__main__":

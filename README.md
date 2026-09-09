@@ -34,7 +34,7 @@ The first public release remains gated on the Valheim 1.0 compatibility work in 
 
 The launcher creates a private Python environment inside the extracted folder, installs the pinned dependencies on the first run, and starts Wulfpack Forge. The first run needs an internet connection and may take several minutes. Later runs reuse that environment unless `requirements.txt` changes.
 
-The current build enables saving for character-save format versions 40 through 43 whose player data uses the known layout. A structurally valid save with any other version can be inspected, but **Save Changes** remains disabled. Valheim 1.0 compatibility has not been claimed or validated yet.
+The current build enables saving for character-save format versions 40 through 43, and for the version 46 container introduced by Valheim 1.0, whose player data uses the known layout. A structurally valid save with any other version can be inspected, but **Save Changes** remains disabled. **A character saved by Valheim 1.0 still cannot be edited**: its player data uses a newer layout this build does not read. Such a file is now refused by name — it reports the player-data version it carries instead of a byte count — and the character list and the editor agree, so a character that cannot be opened is no longer offered.
 
 ## See it in action
 
@@ -189,7 +189,7 @@ The bundled item catalog is currently generated from **Valheim 0.221.12** data a
 
 Valheim 1.0 is scheduled for **September 9, 2026**. Wulfpack Forge will not claim post-1.0 compatibility merely because the application launches. The release gate tracked in [issue #2](https://github.com/Knapp-Kevin/WulfPackForge/issues/2) requires a deliberate catalog refresh plus real 1.0 character-save validation, including load, no-op round trip, appearance editing, inventory editing, backup behavior, atomic replacement, and in-game acceptance.
 
-The current parser/serializer is write-validated for character-save versions **40 through 43**: real saves of each version round-trip byte-identical through the codec, and the inner player-data layout is checked separately. A structurally valid save using any other character-save version, or an unknown player-data layout, is shown as **Compatibility unverified** and remains read-only until it has its own evidence.
+The current parser/serializer is write-validated for character-save versions **40 through 43** — real saves of each version round-trip byte-identical through the codec — and for container version **46**, which round-trips byte-identical against a synthetic fixture. **The version 46 evidence is synthetic only**: no real Valheim 1.0 save is committed to this repository, so that version is *expected compatible* rather than *verified*. The inner player-data layout is checked separately and remains validated for player-data version 29 alone. A structurally valid save using any other character-save version, or an unknown player-data layout, is shown as **Compatibility unverified** and remains read-only until it has its own evidence.
 
 Until the 1.0 gate passes, unknown items are preserved conservatively. They may be modded content or legitimate items introduced by a newer Valheim build.
 

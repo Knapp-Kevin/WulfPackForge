@@ -10,10 +10,12 @@ SAVE_STATE_VERIFIED = "Verified"
 SAVE_STATE_NEEDS_ATTENTION = "Needs attention"
 SAVE_STATE_COMPATIBILITY_UNVERIFIED = "Compatibility unverified"
 
-# Character-save versions the codec has round-tripped byte-identical on real saves
-# (22 v40-v42 files and 18 v43 files, 2026-09-06). The player payload is gated
-# separately by SUPPORTED_PLAYER_DATA_VERSIONS; any other outer version is read-only.
-SUPPORTED_CHARACTER_SAVE_VERSIONS = frozenset({40, 41, 42, 43})
+# Character-save container versions this codec round-trips byte-identical. Versions 40-43
+# are evidenced by real saves (22 v40-v42 files and 18 v43 files, 2026-09-06); version 46
+# is evidenced by a synthetic fixture only, because no real v46 save is committed to this
+# repository. The player payload is gated separately by SUPPORTED_PLAYER_DATA_VERSIONS;
+# any other outer version is read-only.
+SUPPORTED_CHARACTER_SAVE_VERSIONS = frozenset({40, 41, 42, 43, 46})
 
 
 @dataclass(frozen=True)

@@ -112,5 +112,22 @@ class CharacterRecordTests(QtTestCase):
         self.assertEqual((record.name, state.kind), ("Ares", "game-old"))
 
 
+class PickerRefusesWhatOpenCannotRead(QtTestCase):
+    """The picker must not offer a character the open path would reject."""
+
+    def test_identity_fields_reports_invalid_for_an_unreadable_payload(self):
+        from tests.fixture_saves import realistic_player_data, realistic_root_save, write_fch
+        from subscripts.playerDataUtil import pack_player_data_hex
+
+        payload = realistic_player_data()
+        payload["version"] = 33
+        root = realistic_root_save(player_hex=pack_player_data_hex(payload)[:80])
+        with tempfile.TemporaryDirectory() as tmp:
+            path = write_fch(Path(tmp) / "future.fch", root)
+            fields = records_module._identity_fields(Path(path))
+        self.assertFalse(fields["valid"])
+        self.assertIn("33", fields["error"])
+
+
 if __name__ == "__main__":
     unittest.main()
