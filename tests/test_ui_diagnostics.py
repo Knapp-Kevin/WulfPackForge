@@ -1,5 +1,6 @@
 import logging
 import platform
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -22,7 +23,9 @@ from ui.diagnostics import (
 from ui.messages import previous_session_crashed
 
 app = QApplication.instance() or QApplication([])
-REPORT = Path("C:/Users/example/AppData/Local/WulfpackForge/logs/crash-20260908T151056Z-42.log")
+# Absolute on every platform: two tests round-trip this through QUrl.fromLocalFile,
+# which a Windows-shaped literal cannot survive on macOS or Linux.
+REPORT = Path(tempfile.gettempdir(), "WulfpackForge", "logs", "crash-20260908T151056Z-42.log")
 
 
 class RecordingMessageBox:
