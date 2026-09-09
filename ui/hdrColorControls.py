@@ -84,8 +84,11 @@ class HdrColorControls(QGroupBox):
             spin.setRange(0.0, MAX_HDR_COMPONENT)
             spin.setDecimals(3)
             spin.setSingleStep(0.1)
-            spin.setPrefix(f"{channel} ")
+            spin.setAccessibleName(f"{label.rstrip(':')} {channel}")
             spin.valueChanged.connect(self._spin_changed)
+            channel_label = QLabel(channel)
+            channel_label.setBuddy(spin)  # keeps the letter tied to its field for screen readers
+            row.addWidget(channel_label)
             row.addWidget(spin)
             spins.append(spin)
         row.addStretch()
