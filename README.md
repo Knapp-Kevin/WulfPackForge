@@ -18,6 +18,14 @@ Once the first public Windows release is published, the intended player path is 
 
 > **Unofficial community software.** Wulfpack Forge is not affiliated with, authorized by, or endorsed by Iron Gate Studio or Coffee Stain Publishing.
 
+## WulfPack project family
+
+Wulfpack Forge is the **outside-the-game** half of the WulfPack Valheim project family: it edits and manages character saves without running inside Valheim.
+
+For **in-game BepInEx mods**, including Rune Compass, Rested Whispers, Pied Piper, Celestial Dial, and Vidar Shrugged, see **[WulfPack Mods](https://github.com/Knapp-Kevin/WulfPack-mods)**.
+
+The two repositories are intentionally separate so runtime mods and external save tooling keep clean technical and safety boundaries while remaining easy to discover from one another.
+
 ## Current availability
 
 **No public Windows release has been published yet.** The Windows workflow builds and smoke-tests `WulfpackForge.exe` and `WulfpackForge-windows-x64.zip`; its temporary GitHub Actions artifacts are validation evidence, not durable public releases. Release-candidate tags (for example `v0.9.0-rc.1`) produce **draft pre-releases** that only the maintainer can see, so the release path is exercised before anything is published.
@@ -228,7 +236,7 @@ Source installation is intended for contributors, developers, and advanced users
 
 ```bash
 git clone https://github.com/Knapp-Kevin/WulfPackForge.git
-cd WulfPackForge
+cd WulfpackForge
 ```
 
 ### Install
