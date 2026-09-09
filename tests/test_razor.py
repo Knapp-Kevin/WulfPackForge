@@ -51,9 +51,22 @@ def violations_in(path):
             found.append(f"{rel}:{node.lineno} star import from {node.module}")
         if rel.split("/")[0] in NO_QT_DIRS and _imports_qt(node):
             found.append(f"{rel}:{node.lineno} PySide6 import below the UI layer")
+        if _reads_layout_item(node):
+            found.append(f"{rel}:{node.lineno} layout.itemAt(); the item stays owned by the layout and Qt may "
+                         "delete it under the reference (use takeAt, which transfers ownership)")
         if _connects_self_lambda(node):
             found.append(f"{rel}:{node.lineno} signal connected to a lambda capturing self (freed by GC, not deterministically)")
     return found
+
+
+def _reads_layout_item(node) -> bool:
+    """Any ``layout.itemAt(...)``.
+
+    Matching the chained ``itemAt(i).widget()`` shape only is not enough: binding the item to a
+    local first is the same hazard and evades a receiver match. Nothing in the scanned tree needs
+    ``itemAt``; ``takeAt`` transfers ownership and is always the safe form here.
+    """
+    return isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "itemAt"
 
 
 def _connects_self_lambda(node) -> bool:
