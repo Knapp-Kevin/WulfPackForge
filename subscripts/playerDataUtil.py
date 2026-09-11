@@ -2,9 +2,12 @@
 
 ``pack_player_data_hex(unpack_player_data_hex(h)) == h`` for every supported
 payload. Strings use ``surrogateescape`` so non-UTF-8 bytes survive, and the
-reader refuses to return a payload that still has unconsumed bytes.
+reader refuses to return a payload that still has unconsumed bytes. Item records
+are read and written by ``subscripts.itemCodec`` in the layout the payload's
+``inventory_version`` declares.
 """
 from subscripts.fchUtil import BinaryReader, BinaryWriter, STRING_ERRORS
+from subscripts.itemCodec import read_item, write_item
 from subscripts.saveErrors import SaveFormatError
 
 __all__ = ["BinaryReader", "BinaryWriter", "STRING_ERRORS", "PlayerDataReader", "PlayerDataWriter",
@@ -16,8 +19,14 @@ __all__ = ["BinaryReader", "BinaryWriter", "STRING_ERRORS", "PlayerDataReader", 
 # read-only. A payload whose layout this build cannot read at all fails inside the body;
 # _restate_body_failure restates that failure in terms of the payload version, so the
 # operator is told the save is from a newer Valheim instead of being shown a byte count.
-SUPPORTED_PLAYER_DATA_VERSIONS = frozenset({(29, 106, 2)})
+# (29, 106, 2) is validated on real saves of container versions 40-43; (33, 109, 2) is
+# validated on real Valheim 1.0 saves locally and on a synthetic fixture in CI.
+SUPPORTED_PLAYER_DATA_VERSIONS = frozenset({(29, 106, 2), (33, 109, 2)})
 
+# Layout gates, as the game declares them.
+STRING_BIOMES_FROM = 33      # m_knownBiome holds strings rather than int32 flags
+BUILD_UI_FROM = 33           # a trailing byte[] carrying the build UI follows eitr
+USHORT_ITEM_COUNT_FROM = 108  # the inventory count is a ushort rather than an int32
 
 READABLE_PAYLOAD_VERSIONS = frozenset(triple[0] for triple in SUPPORTED_PLAYER_DATA_VERSIONS)
 
@@ -79,23 +88,26 @@ def new_inventory_item(prefab: str, grid_x: int, grid_y: int, durability: float)
     }
 
 
-def _read_item(pkg: BinaryReader) -> dict:
-    item = {
-        "prefab": pkg.read_string(),
-        "stack": pkg.read_int32(),
-        "durability": pkg.read_float(),
-        "grid_x": pkg.read_int32(),
-        "grid_y": pkg.read_int32(),
-        "equipped": pkg.read_bool(),
-        "quality": pkg.read_int32(),
-        "variant": pkg.read_int32(),
-        "crafter_id": pkg.read_long(),
-        "crafter_name": pkg.read_string(),
-    }
-    item["custom_data"] = _read_string_dict(pkg)
-    item["world_level"] = pkg.read_int32()
-    item["picked_up"] = pkg.read_bool()
-    return item
+def _read_inventory(pkg: BinaryReader, inventory_version: int) -> list:
+    count = pkg.read_ushort() if inventory_version >= USHORT_ITEM_COUNT_FROM else pkg.read_int32()
+    return [read_item(pkg, inventory_version) for _ in range(count)]
+
+
+def _read_biomes(pkg: BinaryReader, version: int) -> list:
+    if version >= STRING_BIOMES_FROM:
+        return _read_string_list(pkg)
+    return [pkg.read_int32() for _ in range(pkg.read_int32())]
+
+
+def _read_knowledge(pkg: BinaryReader, out: dict) -> None:
+    out["known_recipes"] = _read_string_list(pkg)
+    out["known_stations"] = {pkg.read_string(): pkg.read_int32() for _ in range(pkg.read_int32())}
+    out["known_material"] = _read_string_list(pkg)
+    out["shown_tutorials"] = _read_string_list(pkg)
+    out["uniques"] = _read_string_list(pkg)
+    out["trophies"] = _read_string_list(pkg)
+    out["known_biomes"] = _read_biomes(pkg, out["version"])
+    out["known_texts"] = _read_string_dict(pkg)
 
 
 def _read_appearance(pkg: BinaryReader, out: dict) -> None:
@@ -121,15 +133,8 @@ def unpack_player_data_hex(hex_string: str) -> dict:
         out["guardian_power"] = pkg.read_string()
         out["guardian_power_cooldown"] = pkg.read_float()
         out["inventory_version"] = pkg.read_int32()
-        out["inventory"] = [_read_item(pkg) for _ in range(pkg.read_int32())]
-        out["known_recipes"] = _read_string_list(pkg)
-        out["known_stations"] = {pkg.read_string(): pkg.read_int32() for _ in range(pkg.read_int32())}
-        out["known_material"] = _read_string_list(pkg)
-        out["shown_tutorials"] = _read_string_list(pkg)
-        out["uniques"] = _read_string_list(pkg)
-        out["trophies"] = _read_string_list(pkg)
-        out["known_biomes"] = [pkg.read_int32() for _ in range(pkg.read_int32())]
-        out["known_texts"] = _read_string_dict(pkg)
+        out["inventory"] = _read_inventory(pkg, out["inventory_version"])
+        _read_knowledge(pkg, out)
         _read_appearance(pkg, out)
         out["foods"] = [{"name": pkg.read_string(), "time": pkg.read_float()} for _ in range(pkg.read_int32())]
         out["skill_version"] = pkg.read_int32()
@@ -141,6 +146,8 @@ def unpack_player_data_hex(hex_string: str) -> dict:
         out["stamina"] = pkg.read_float()
         out["max_eitr"] = pkg.read_float()
         out["eitr"] = pkg.read_float()
+        if out["version"] >= BUILD_UI_FROM:
+            out["build_ui"] = pkg.read_byte_array()
         pkg.require_exhausted("player data payload")
     except SaveFormatError as exc:
         raise _restate_body_failure(out["version"], exc) from exc
@@ -160,20 +167,23 @@ def _write_string_list(pkg: BinaryWriter, values: list) -> None:
         pkg.write_string(value)
 
 
-def _write_item(pkg: BinaryWriter, item: dict) -> None:
-    pkg.write_string(item["prefab"])
-    pkg.write_int32(item["stack"])
-    pkg.write_float(item["durability"])
-    pkg.write_int32(item["grid_x"])
-    pkg.write_int32(item["grid_y"])
-    pkg.write_bool(item["equipped"])
-    pkg.write_int32(item["quality"])
-    pkg.write_int32(item["variant"])
-    pkg.write_long(item["crafter_id"])
-    pkg.write_string(item["crafter_name"])
-    _write_string_dict(pkg, item["custom_data"])
-    pkg.write_int32(item["world_level"])
-    pkg.write_bool(item["picked_up"])
+def _write_inventory(pkg: BinaryWriter, data: dict) -> None:
+    inventory_version = data["inventory_version"]
+    if inventory_version >= USHORT_ITEM_COUNT_FROM:
+        pkg.write_ushort(len(data["inventory"]))
+    else:
+        pkg.write_int32(len(data["inventory"]))
+    for item in data["inventory"]:
+        write_item(pkg, item, inventory_version)
+
+
+def _write_biomes(pkg: BinaryWriter, data: dict) -> None:
+    if data["version"] >= STRING_BIOMES_FROM:
+        _write_string_list(pkg, data["known_biomes"])
+        return
+    pkg.write_int32(len(data["known_biomes"]))
+    for biome in data["known_biomes"]:
+        pkg.write_int32(biome)
 
 
 def _write_appearance(pkg: BinaryWriter, data: dict) -> None:
@@ -196,9 +206,7 @@ def _write_knowledge(pkg: BinaryWriter, data: dict) -> None:
     _write_string_list(pkg, data["shown_tutorials"])
     _write_string_list(pkg, data["uniques"])
     _write_string_list(pkg, data["trophies"])
-    pkg.write_int32(len(data["known_biomes"]))
-    for biome in data["known_biomes"]:
-        pkg.write_int32(biome)
+    _write_biomes(pkg, data)
     _write_string_dict(pkg, data["known_texts"])
 
 
@@ -226,9 +234,7 @@ def pack_player_data_hex(data: dict) -> str:
     pkg.write_string(data["guardian_power"])
     pkg.write_float(data["guardian_power_cooldown"])
     pkg.write_int32(data["inventory_version"])
-    pkg.write_int32(len(data["inventory"]))
-    for item in data["inventory"]:
-        _write_item(pkg, item)
+    _write_inventory(pkg, data)
     _write_knowledge(pkg, data)
     _write_appearance(pkg, data)
     _write_progress(pkg, data)
@@ -236,4 +242,6 @@ def pack_player_data_hex(data: dict) -> str:
     pkg.write_float(data["stamina"])
     pkg.write_float(data["max_eitr"])
     pkg.write_float(data["eitr"])
+    if data["version"] >= BUILD_UI_FROM:
+        pkg.write_byte_array(data.get("build_ui", b""))
     return pkg.get_bytes().hex()

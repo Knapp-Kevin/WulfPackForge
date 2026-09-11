@@ -192,6 +192,17 @@ class MainWindowSaveFlowTests(unittest.TestCase):
         self.assertIn(("startup", "constructed"), RecordingMessageBox.calls)
         loud.close()
 
+    def test_a_v33_character_opens_writable_and_saves_byte_identically(self):
+        from tests.fixture_saves import realistic_v33_player_hex, realistic_v46_root_save
+
+        modern = write_fch(self.save_dir / "modern.fch", realistic_v46_root_save(realistic_v33_player_hex(), name="Modern"))
+        original = modern.read_bytes()
+        self.window.load_save_file(str(modern))
+        self.assertTrue(self.window.btn_save_save.isEnabled(), "a 1.0 character must be editable")
+        self.assertEqual(self.window.save_status.state_label.text(), "Verified")
+        self.window.save_save_file()
+        self.assertEqual(modern.read_bytes(), original)
+
     def test_unsupported_inner_version_is_read_only(self):
         payload = realistic_player_data()
         payload["version"] = 30

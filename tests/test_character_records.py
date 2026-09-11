@@ -119,14 +119,14 @@ class PickerRefusesWhatOpenCannotRead(QtTestCase):
         from tests.fixture_saves import realistic_player_data, realistic_root_save, write_fch
         from subscripts.playerDataUtil import pack_player_data_hex
 
-        payload = realistic_player_data()
-        payload["version"] = 33
-        root = realistic_root_save(player_hex=pack_player_data_hex(payload)[:80])
+        packed = pack_player_data_hex(realistic_player_data())
+        stamped = (34).to_bytes(4, "little", signed=True).hex() + packed[8:80]
+        root = realistic_root_save(player_hex=stamped)
         with tempfile.TemporaryDirectory() as tmp:
             path = write_fch(Path(tmp) / "future.fch", root)
             fields = records_module._identity_fields(Path(path))
         self.assertFalse(fields["valid"])
-        self.assertIn("33", fields["error"])
+        self.assertIn("34", fields["error"])
 
 
 if __name__ == "__main__":

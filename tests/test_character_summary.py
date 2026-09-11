@@ -27,6 +27,19 @@ class CharacterSummaryTests(unittest.TestCase):
         self.assertEqual(format_created(None), "Unknown")
         self.assertEqual(format_created("garbage"), "Unknown")
 
+    def test_string_biomes_render_by_name(self):
+        self.assertEqual(biome_labels(["$biome_meadows", "Meadows", "$biome_ocean", "$biome_none"]),
+                         ["Meadows", "Ocean", "$biome_none"])
+        self.assertEqual(biome_labels(["Black Forest", "BlackForest", "$biome_blackforest"]), ["Black Forest"])
+        self.assertEqual(biome_labels([1, 4096, 1]), ["Meadows", "Unknown biome (4096)"])
+
+    def test_the_summary_carries_four_risk_lines(self):
+        from tests.fixture_saves import realistic_v33_player_data
+        summary = summarize(realistic_root_save(), realistic_v33_player_data())
+        self.assertEqual(len(summary.cheat_risk), 4)
+        self.assertIn("world cheat state", summary.cheat_risk[-1])
+        self.assertEqual(summary.biomes, ["Meadows", "$biome_none"])
+
     def test_empty_inputs_produce_an_empty_summary(self):
         summary = summarize({}, {})
         self.assertEqual(summary.created, "Unknown")
