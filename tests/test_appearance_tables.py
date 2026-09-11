@@ -30,7 +30,8 @@ class AppearanceTableTests(QtTestCase):
 
     def test_hair_table_from_catalog(self):
         self.assertEqual(VALHEIM_HAIRS["Hair7"], "Dragonslayer")
-        self.assertEqual(len(VALHEIM_HAIRS), 38)
+        self.assertEqual(len(VALHEIM_HAIRS), 39)  # 1.0 added Hair38 ("Masculine")
+        self.assertEqual(VALHEIM_HAIRS["Hair38"], "Masculine")
         self.assertEqual(next(iter(VALHEIM_HAIRS)), HAIR_NONE)
         self.assertEqual(HAIR_NONE, "HairNone")
         self.assertFalse(any("_" in key for key in VALHEIM_HAIRS))

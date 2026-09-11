@@ -1,7 +1,14 @@
 #!/usr/bin/env python3
-"""Generate a versioned vanilla Valheim item catalog from JotunnDoc.
+"""Generate the versioned vanilla Valheim item catalogue.
 
-The generated catalog is intentionally data-only. Runtime safety constraints such as
+Two sources. ``--from-game DIR --game-version V`` reads the installed game (bundles and
+localisation assets) into catalogue schema 2, the source of truth since Valheim 1.0.
+Without it the JotunnDoc item list is parsed as before, which yields schema 1 and is
+refused when it would overwrite a schema-2 catalogue. ``--cross-check`` compares a game
+document against JotunnDoc and copies asset ids; ``--cross-check-only PATH`` compares an
+existing catalogue and exits non-zero on any difference, writing nothing.
+
+The generated catalogue is intentionally data-only. Runtime safety constraints such as
 stack/quality/variant limits remain curated in Wulfpack Forge so a source refresh
 cannot silently make save-writing rules more permissive or destructive.
 """
@@ -11,12 +18,18 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import sys
 import urllib.request
 from html.parser import HTMLParser
 from pathlib import Path
 
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+from tools.catalogFromGame import cross_check, generate, merge_asset_ids  # noqa: E402
+
 DEFAULT_SOURCE = "https://valheim-modding.github.io/Jotunn/data/objects/item-list.html"
-CURRENT_STABLE_VERSION = "0.221.12"
+CURRENT_STABLE_VERSION = "1.0.7"
 
 
 class ItemTableParser(HTMLParser):
@@ -129,23 +142,60 @@ def parse_catalog(html: str, source_url: str, expected_version: str | None) -> d
     }
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser()
+def _existing_schema(output: Path) -> int:
+    try:
+        return int(json.loads(output.read_text(encoding="utf-8")).get("schema_version", 0))
+    except (OSError, ValueError):
+        return 0
+
+
+def _write(document: dict, output: Path) -> None:
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps(document, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    print(f"Wrote {document['item_count']} catalog rows ({document['selectable_item_count']} selectable) "
+          f"for Valheim {document['game_version']} to {output}")
+
+
+def _report(differences: list[str]) -> int:
+    """Set and type differences fail; selectability differences are reported only (icon presence vs JotunnDoc's judgement)."""
+    for line in differences:
+        print(f"  cross-check: {line}")
+    blocking = [line for line in differences if not line.startswith("selectable differs")]
+    print(f"cross-check: {len(differences)} difference(s) against JotunnDoc, {len(blocking)} on prefab set or type")
+    return 1 if blocking else 0
+
+
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source", default=DEFAULT_SOURCE)
     parser.add_argument("--expected-version", default=CURRENT_STABLE_VERSION)
     parser.add_argument("--output", default="data/valheim_items.json")
-    args = parser.parse_args()
-
-    document = parse_catalog(fetch_text(args.source), args.source, args.expected_version)
+    parser.add_argument("--from-game", metavar="DIR", help="generate schema 2 from the installed game folder")
+    parser.add_argument("--game-version", help="the version the game's main menu shows; required with --from-game")
+    parser.add_argument("--cross-check", action="store_true", help="compare the game document against JotunnDoc and merge asset ids")
+    parser.add_argument("--cross-check-only", metavar="PATH", help="compare an existing catalogue against JotunnDoc; write nothing")
+    args = parser.parse_args(argv)
     output = Path(args.output)
-    output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(json.dumps(document, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
-    print(
-        f"Wrote {document['item_count']} catalog rows "
-        f"({document['selectable_item_count']} selectable) for Valheim {document['game_version']} "
-        f"to {output}"
-    )
+    if args.cross_check_only:
+        existing = json.loads(Path(args.cross_check_only).read_text(encoding="utf-8"))
+        return _report(cross_check(existing, parse_catalog(fetch_text(args.source), args.source, args.expected_version)))
+    if args.from_game:
+        if not args.game_version:
+            parser.error("--from-game needs --game-version")
+        document = generate(Path(args.from_game), args.game_version)
+        if args.cross_check:
+            jotunn = parse_catalog(fetch_text(args.source), args.source, args.expected_version)
+            _report(cross_check(document, jotunn))
+            document = merge_asset_ids(document, jotunn)
+            document["source"]["note"] += f" Cross-checked against JotunnDoc for Valheim {jotunn['game_version']}."
+        _write(document, output)
+        return 0
+    if _existing_schema(output) >= 2:
+        print(f"Refusing to overwrite the schema-2 catalogue at {output} with a JotunnDoc (schema 1) one; "
+              "use --from-game or --cross-check-only.", file=sys.stderr)
+        return 1
+    _write(parse_catalog(fetch_text(args.source), args.source, args.expected_version), output)
     return 0
 
 

@@ -14,5 +14,4 @@
 !requirements-dev.txt
 !requirements-optional.txt
 !data/valheim_items.json
-!data/valheim_durability.json
 .coverage

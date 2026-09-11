@@ -102,18 +102,20 @@ class IdentityTests(unittest.TestCase):
         self.assertEqual(len(hash_index(stable_hash_code)), len(prefabs))
 
     def test_an_unresolved_hash_gets_a_stable_non_empty_identity(self):
-        token = resolve_prefab_hash(-1891214396)
+        unknown = stable_hash_code("ZzNotInAnyCatalogue")
+        token = resolve_prefab_hash(unknown)
         self.assertTrue(token.startswith(ITEM_UNKNOWN_PREFIX))
-        self.assertEqual(token, resolve_prefab_hash(-1891214396))
+        self.assertEqual(token, resolve_prefab_hash(unknown))
         self.assertGreater(len(token), len(ITEM_UNKNOWN_PREFIX))
 
     def test_an_unresolved_item_round_trips_to_the_same_bytes(self):
+        unknown = stable_hash_code("ZzNotInAnyCatalogue")
         raw = full_record().replace(
-            stable_hash_code("Wood").to_bytes(4, "little", signed=True), (-1891214396).to_bytes(4, "little", signed=True))
+            stable_hash_code("Wood").to_bytes(4, "little", signed=True), unknown.to_bytes(4, "little", signed=True))
         item = decode(raw)
-        self.assertEqual(item["prefab"], f"{ITEM_UNKNOWN_PREFIX}-1891214396")
+        self.assertEqual(item["prefab"], f"{ITEM_UNKNOWN_PREFIX}{unknown}")
         self.assertEqual(encode(item), raw)
-        self.assertNotEqual(stable_hash_code(item["prefab"]), -1891214396, "the token itself is never hashed")
+        self.assertNotEqual(stable_hash_code(item["prefab"]), unknown, "the token itself is never hashed")
 
     def test_a_renamed_item_is_written_under_its_new_hash(self):
         item = decode(full_record())

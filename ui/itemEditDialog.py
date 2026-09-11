@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
     QSpinBox,
 )
 
+from data.damage import CHEAT_DAMAGE_THRESHOLD, exceeds_cheat_threshold
 from data.durability import max_durability
 from data.items import CATALOG_GAME_VERSION, completion_labels, resolve_item
 from ui.glyphs import item_pixmap
@@ -84,6 +85,9 @@ class ItemEditDialog(QDialog):
         self.durability_percent.setRange(0.0, 1000.0)  # saves can hold more than the maximum
         self.durability_percent.setSuffix(" %")
         self.durability_label = QLabel("Durability:")
+        self.damage_warning = QLabel()
+        self.damage_warning.setWordWrap(True)
+        self.damage_warning.setVisible(False)
         self._durability_max = None
         self._baseline_percent = None
         self._baseline_quality = int(item_data.get("quality", 1))
@@ -98,6 +102,7 @@ class ItemEditDialog(QDialog):
         durability_row.addWidget(self.durability_percent)
         durability_row.addWidget(self.durability_input)
         layout.addRow(self.durability_label, durability_row)
+        layout.addRow("", self.damage_warning)
         layout.addRow("Quality Level:", self.quality_input)
         self.variant_label = QLabel("Variant (Style):")
         variant_row = QHBoxLayout()
@@ -115,10 +120,15 @@ class ItemEditDialog(QDialog):
     # ------------------------------------------------------------ durability
     def _reapply_constraints(self):
         self._apply_catalog_constraints(preserve_existing=True)
+        self._refresh_durability_mode()
 
     def _refresh_durability_mode(self, *_args):
         """Percent of the real maximum when it is known for this prefab and quality, else the raw value."""
         prefab = self.prefab_input.text().strip()
+        over = exceeds_cheat_threshold(prefab, self.quality_input.value())
+        self.damage_warning.setText(f"Damage at this quality is above the game's cheat threshold ({CHEAT_DAMAGE_THRESHOLD:g}); "
+                                    "Valheim marks such an item as cheated." if over else "")
+        self.damage_warning.setVisible(over)
         maximum = max_durability(prefab, self.quality_input.value())
         self._durability_max = maximum
         known = maximum is not None

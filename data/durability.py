@@ -1,26 +1,24 @@
-"""Maximum durability per item and quality, from the generated wiki-derived table.
+"""Maximum durability per item and quality, from the catalogue's game-derived durability records.
 
-``max(quality) = base + per_level * (quality - 1)``. A ``base`` of 0 means the item
-never wears (crowns, the lantern, tankards); an unknown ``per_level`` only lets us
-answer for quality 1. Everything else is reported as unknown so the editor falls
-back to the raw value and never invents a number.
+``max(quality) = base + per_level * (quality - 1)``. An item the game never wears down has
+no durability record, and an unknown ``per_level`` only lets us answer for quality 1.
+Everything else is reported as unknown so the editor falls back to the raw value and never
+invents a number.
 """
-import json
-from pathlib import Path
 from typing import Dict, Optional
+
+from data.catalogDocument import catalog_document
 
 DEFAULT_UNKNOWN_DURABILITY = 100.0
 
 
 def _load() -> Dict[str, dict]:
-    path = Path(__file__).with_name("valheim_durability.json")
-    try:
-        document = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return {}
-    if document.get("schema_version") != 1 or not isinstance(document.get("items"), dict):
-        return {}
-    return document["items"]
+    table: Dict[str, dict] = {}
+    for item in catalog_document().get("items", ()):
+        durability = item.get("durability")
+        if durability:
+            table[item["prefab"]] = {"base": durability.get("max"), "per_level": durability.get("per_level")}
+    return table
 
 
 _TABLE = _load()
@@ -28,7 +26,7 @@ _LOWER = {prefab.lower(): entry for prefab, entry in _TABLE.items()}
 
 
 def durability_entry(prefab: str) -> Optional[dict]:
-    """Raw table entry (``base``, ``per_level``, ``levels``, ``page``) or ``None``."""
+    """Raw entry (``base``, ``per_level``) or ``None``."""
     return _LOWER.get((prefab or "").lower())
 
 

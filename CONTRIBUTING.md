@@ -90,18 +90,23 @@ A pull request that weakens one of these invariants must explain why and include
 
 The generated catalog and curated write constraints have different responsibilities.
 
-- `data/valheim_items.json` supplies discoverability and source-version metadata.
+- `data/valheim_items.json` supplies discoverability, source-version metadata, and the game's own limits, durability and damage tables (catalog schema 2, generated from the installed game).
 - `data/items.py` contains curated safety constraints and resolution behavior.
 - Catalog refreshes must not silently change stack, quality, or variant rules.
 - Unknown and modded prefabs must remain editable through the raw-ID path.
 
-When refreshing the catalog, pin the expected Valheim version and inspect the generated diff for unexpected removals, duplicates, and source drift.
+When refreshing the catalog, state the game version deliberately, run the JotunnDoc cross-check, and inspect the generated diff for unexpected removals, duplicates, and source drift.
 
-Regenerate the two versioned data tables with:
+Regenerate the catalog from an installed game (optional UnityPy required) with:
 
 ```bash
-python tools/update_item_catalog.py --expected-version 0.221.12
-python tools/update_item_durability.py
+python tools/update_item_catalog.py --from-game "<Valheim folder>" --game-version <version shown in the main menu> --cross-check
+```
+
+Validate the committed catalog against JotunnDoc without writing:
+
+```bash
+python tools/update_item_catalog.py --cross-check-only data/valheim_items.json
 ```
 
 ## User experience standards

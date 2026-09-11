@@ -174,7 +174,7 @@ Separates discoverability metadata from write policy.
 - `items.py` and `valheim_items.json` provide generated item metadata plus curated write constraints and resolution behavior.
 - `item_groups.py` and `equipment.py` provide player-facing catalog navigation and equipment-role/slot rules.
 - `glyphs.py` and `appearance.py` map catalog data to presentation-only item glyphs and appearance choices.
-- `durability.py` and `valheim_durability.json` provide wiki-derived numeric maximum-durability facts and guarded calculations.
+- `catalogDocument.py` serves the raw schema-2 catalog records; `durability.py` reads the game's durability maxima from them with guarded calculations, and `damage.py` reads the damage tables and the game's 10000 cheat-damage threshold.
 - `skills.py` and `biomes.py` provide the supported player-facing names for those save fields.
 
 A catalog refresh must not silently alter write constraints.
@@ -255,7 +255,6 @@ The bundle includes:
 
 - Python application/runtime code;
 - `data/valheim_items.json`;
-- `data/valheim_durability.json`;
 - `assets/wulfpack-forge-banner.jpg` and `assets/FrostWulf-favicon.png`;
 - the embedded `assets/wulfpack-forge.ico` Windows icon;
 - the original inventory masters under `assets/glyphs/items/`;
