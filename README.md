@@ -193,7 +193,7 @@ Backups are still worth keeping for characters you care about, especially around
 
 ## Valheim compatibility
 
-The bundled item catalog is currently generated from **Valheim 0.221.12** data and contains more than 900 player-selectable vanilla items.
+The bundled item catalog is generated from **Valheim 1.0.12** (Steam build 25253764) game data and contains more than 900 player-selectable vanilla items (1517 items in all, including every Deep North and gold-weapon addition; creature attacks and the NPC-held copies of player equipment are catalogued but not offered in the picker).
 
 Valheim 1.0 is scheduled for **September 9, 2026**. Wulfpack Forge will not claim post-1.0 compatibility merely because the application launches. The release gate tracked in [issue #2](https://github.com/Knapp-Kevin/WulfPackForge/issues/2) requires a deliberate catalog refresh plus real 1.0 character-save validation, including load, no-op round trip, appearance editing, inventory editing, backup behavior, atomic replacement, and in-game acceptance.
 
@@ -205,24 +205,26 @@ Unknown items are preserved conservatively. In a 1.0 save an item the catalog ca
 
 ## Item catalog design
 
-The player-facing catalog is generated from JotunnDoc vanilla Valheim item data and committed as `data/valheim_items.json`.
+The player-facing catalog is generated from the player's own Valheim installation — the game's item data and its English localisation, read in one pass — and committed as `data/valheim_items.json` (catalog schema 2). The JotunnDoc item list is kept as a cross-check: the generator reports every prefab, type or selectability difference between the two, and copies JotunnDoc's asset identifiers onto matching items.
 
 Catalog discovery and save-writing constraints are intentionally separated:
 
-- the generated catalog supplies names, types, asset identifiers, selectability, and source-version metadata;
+- the generated catalog supplies names, types, asset identifiers, selectability, the game's stack, quality and variant limits, durability maxima, damage tables, and source-version metadata (game version and Steam build id);
 - the curated constraint layer controls known stack, quality, and variant limits;
 - a catalog refresh therefore cannot silently loosen save-writing rules;
 - raw prefab entry remains available for modded and unknown content.
 
-For the current pre-1.0 snapshot:
+For the current Valheim 1.0.12 snapshot (needs the game installed and the optional UnityPy package):
 
 ```bash
-python tools/update_item_catalog.py --expected-version 0.221.12
+python tools/update_item_catalog.py --from-game "<Valheim folder>" --game-version 1.0.12 --cross-check
 ```
 
-The generator refuses unexpected source-version drift and suspiciously small catalogs so a game update cannot silently rewrite the application data model.
+The game version is stated deliberately because the install carries no readable version string; the Steam build id is recorded automatically. The generator refuses suspiciously small catalogs, and the JotunnDoc path refuses to overwrite a schema-2 catalog, so a game update cannot silently rewrite the application data model. `--cross-check-only data/valheim_items.json` validates the committed catalog against JotunnDoc without writing.
 
-Item durability is maintained separately in `data/valheim_durability.json`. `tools/update_item_durability.py` builds that table from Valheim community wiki item pages, records only numeric durability facts, and preserves the source attribution in the generated file. For a known item and quality, Wulfpack Forge calculates the maximum as `base + per_level * (quality - 1)` and presents the saved durability as a percentage of that maximum. Unknown durability data stays on the raw-value path rather than being guessed.
+Item durability comes from the same catalog: each record that wears carries the game's maximum and per-level increment, and for a known item and quality Wulfpack Forge calculates the maximum as `base + per_level * (quality - 1)` and presents the saved durability as a percentage of that maximum. The earlier wiki-derived durability table was retired when a comparison against the game found a quarter of its entries wrong. Unknown durability data stays on the raw-value path rather than being guessed.
+
+The catalog also carries each item's damage table. The item editor warns when the damage at the chosen quality exceeds 10000, the bound the game itself uses to mark an item as cheated; only the game's two internal cheat weapons cross it.
 
 ## Running from source
 
@@ -270,7 +272,7 @@ The repository uses PyInstaller to produce a self-contained Windows executable. 
 - installs application dependencies;
 - runs the automated test suite;
 - builds `WulfpackForge.exe`;
-- bundles `data/valheim_items.json`, `data/valheim_durability.json`, the canonical banner, the Frostwulf application icon, the original inventory glyph masters, and the complete hair and beard thumbnail sets under `assets/glyphs/hair/` and `assets/glyphs/beard/`;
+- bundles `data/valheim_items.json`, the canonical banner, the Frostwulf application icon, the original inventory glyph masters, and the complete hair and beard thumbnail sets under `assets/glyphs/hair/` and `assets/glyphs/beard/`;
 - embeds `assets/wulfpack-forge.ico` as the Windows executable icon;
 - smoke-tests the packaged executable and required assets;
 - creates a Windows ZIP package;
@@ -329,8 +331,9 @@ The durable product roadmap is [issue #2](https://github.com/Knapp-Kevin/WulfPac
 │   ├── durability.py
 │   ├── biomes.py
 │   ├── skills.py
-│   ├── valheim_items.json
-│   └── valheim_durability.json
+│   ├── catalogDocument.py
+│   ├── damage.py
+│   └── valheim_items.json
 ├── subscripts/
 │   ├── binaryIO.py
 │   ├── fchUtil.py

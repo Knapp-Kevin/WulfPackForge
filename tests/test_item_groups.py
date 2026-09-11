@@ -41,7 +41,8 @@ class ItemGroupTests(unittest.TestCase):
         self.assertEqual(grouped, pickable)
 
     def test_customization_rows_are_excluded(self):
-        customization = next(item for item in ITEMS if item.item_type == "Customization")
+        from data.items import resolve_item
+        customization = resolve_item("Hair1")  # customization rows carry no icon, so none is selectable
         self.assertIsNone(group_for(customization))
         self.assertFalse(any(i.prefab == customization.prefab for i in items_in_group("Misc")))
 

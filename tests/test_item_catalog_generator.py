@@ -42,6 +42,21 @@ class ItemCatalogGeneratorTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "suspiciously small catalog"):
             parse_catalog(self._html(count=20), "https://example.invalid/items", "0.221.12")
 
+    def test_a_jotunndoc_catalogue_never_overwrites_schema_2(self):
+        import json
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+        import tools.update_item_catalog as tool
+
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / "valheim_items.json"
+            output.write_text(json.dumps({"schema_version": 2, "items": []}), encoding="utf-8")
+            before = output.read_bytes()
+            with patch.object(tool, "fetch_text", return_value=self._html()):
+                self.assertEqual(tool.main(["--output", str(output), "--expected-version", "0.221.12"]), 1)
+            self.assertEqual(output.read_bytes(), before)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -26,7 +26,7 @@ def item_data(prefab, stack=1, quality=1, variant=0):
 class ItemEditDialogTests(QtTestCase):
     def test_known_item_uses_catalog_constraints(self):
         dialog = ItemEditDialog(item_data("ArrowWood", stack=20))
-        self.assertIn("Valheim 0.221.12 catalog", dialog.catalog_status.text())
+        self.assertIn("Valheim 1.0.12 catalog", dialog.catalog_status.text())
         self.assertEqual(dialog.stack_input.maximum(), 100)
         self.assertEqual(dialog.quality_input.maximum(), 1)
         self.assertEqual(dialog.variant_input.maximum(), 0)
@@ -48,9 +48,26 @@ class ItemEditDialogTests(QtTestCase):
         self.assertEqual(updated["stack"], 777)
         self.assertEqual(updated["quality"], 42)
         self.assertEqual(updated["variant"], 123)
-        self.assertIn("Not found in the Valheim 0.221.12 catalog", dialog.catalog_status.text())
+        self.assertIn("Not found in the Valheim 1.0.12 catalog", dialog.catalog_status.text())
         self.assertIn("newer game version", dialog.catalog_status.text())
         dialog.close()
+
+    def test_cheat_damage_warning_follows_prefab_and_quality(self):
+        dialog = ItemEditDialog(item_data("SledgeCheat"))
+        self.assertTrue(dialog.damage_warning.isVisibleTo(dialog))
+        self.assertIn("10000", dialog.damage_warning.text())
+        dialog.quality_input.setValue(3)
+        self.assertTrue(dialog.damage_warning.isVisibleTo(dialog))
+        dialog.prefab_input.setText("Wood")
+        dialog.prefab_input.editingFinished.emit()
+        self.assertFalse(dialog.damage_warning.isVisibleTo(dialog))
+        dialog.prefab_input.setText("SledgeCheat")
+        dialog.prefab_input.editingFinished.emit()
+        self.assertTrue(dialog.damage_warning.isVisibleTo(dialog))
+        dialog.close()
+        clean = ItemEditDialog(item_data("SwordBronze", quality=4))
+        self.assertFalse(clean.damage_warning.isVisibleTo(clean))
+        clean.close()
 
     def test_generated_catalog_item_is_human_readable(self):
         dialog = ItemEditDialog(item_data("ArmorAshlandsMediumChest"))

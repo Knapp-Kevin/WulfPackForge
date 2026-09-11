@@ -1,4 +1,4 @@
-name: Sync Valheim Item Catalog
+name: Cross-check Valheim Item Catalog
 
 on:
   push:
@@ -6,15 +6,16 @@ on:
       - "feat/**"
     paths:
       - "tools/update_item_catalog.py"
+      - "tools/catalogFromGame.py"
+      - "data/valheim_items.json"
       - ".github/workflows/sync-item-catalog.yml"
-      - ".gitignore"
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  sync-catalog:
+  cross-check-catalog:
     if: github.ref_name != 'main'
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -22,31 +23,14 @@ jobs:
     steps:
       - name: Check out branch
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.ref_name }}
-          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Generate pinned Valheim catalog
-        run: python tools/update_item_catalog.py --output data/valheim_items.json
-
-      - name: Validate generated JSON
+      - name: Validate committed JSON
         run: python -m json.tool data/valheim_items.json > /dev/null
 
-      - name: Commit generated catalog when changed
-        shell: bash
-        run: |
-          if [[ -z "$(git status --porcelain -- data/valheim_items.json)" ]]; then
-            echo "Catalog already current."
-            exit 0
-          fi
-          VERSION="$(python -c "import json; print(json.load(open('data/valheim_items.json', encoding='utf-8'))['game_version'])")"
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/valheim_items.json
-          git commit -m "Refresh Valheim ${VERSION} item catalog"
-          git push origin "HEAD:${GITHUB_REF_NAME}"
+      - name: Cross-check the committed catalog against JotunnDoc
+        run: python tools/update_item_catalog.py --cross-check-only data/valheim_items.json

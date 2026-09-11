@@ -50,7 +50,7 @@ _CURATED_ITEMS = [
     _curated_item("AncientSeed", 50, 1, 1, "Ancient Seed"),
     _curated_item("BeechSeeds", 100, 1, 1, "Beech Seeds"),
     _curated_item("Barley", 100, 1, 1),
-    _curated_item("BarleyFlour", 20, 1, 1, "Barley Flour"),
+    _curated_item("BarleyFlour", 50, 1, 1, "Barley Flour"),
     _curated_item("BlackMetal", 30, 1, 1, "Black Metal"),
     _curated_item("Bronze", 30, 1, 1),
     _curated_item("Coal", 50, 1, 1),
@@ -130,7 +130,7 @@ def _load_generated_catalog():
     except (OSError, json.JSONDecodeError):
         return None
 
-    if document.get("schema_version") != 1 or not isinstance(document.get("items"), list):
+    if document.get("schema_version") not in (1, 2) or not isinstance(document.get("items"), list):
         return None
     return document
 
