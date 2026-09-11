@@ -77,6 +77,30 @@ def realistic_player_hex() -> str:
     return pack_player_data_hex(realistic_player_data())
 
 
+UNRESOLVED_HASH = -1891214396  # a 1.0 item the pinned catalogue cannot name
+
+
+def realistic_v33_player_data() -> dict:
+    """The version-29 fixture reshaped as Valheim 1.0 writes it: v33 payload, v109 items."""
+    from subscripts.stableHash import stable_hash_code
+
+    data = realistic_player_data()
+    data["version"], data["inventory_version"] = 33, 109
+    sword, wood, modded = data["inventory"]
+    sword["_wire"] = {"prefab_hash": stable_hash_code("SwordBronze"), "durability_raw": 8800, "cheat_flags": 1}
+    wood["_wire"] = {"prefab_hash": stable_hash_code("Wood"), "durability_raw": 10000, "cheat_flags": 0}
+    modded["prefab"] = f"unknown#{UNRESOLVED_HASH}"
+    modded["_wire"] = {"prefab_hash": UNRESOLVED_HASH, "durability_raw": 10000, "cheat_flags": 0}
+    data["known_biomes"] = ["$biome_meadows", "Meadows", "$biome_none"]
+    data["uniques"] = ["DragonEgg", "invrows 4"]
+    data["build_ui"] = bytes(range(74))
+    return data
+
+
+def realistic_v33_player_hex() -> str:
+    return pack_player_data_hex(realistic_v33_player_data())
+
+
 def realistic_root_save(player_hex: str | None = None, name: str = "Frostwülf") -> dict:
     return {
         "version": 43,

@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 
 from data.biomes import biome_labels
 from data.items import resolve_item
+from subscripts.cheatRisk import from_character, risk_lines
 
 UNKNOWN = "Unknown"
 STATION_NAMES = {
@@ -36,6 +37,7 @@ class CharacterSummary:
     materials: list = field(default_factory=list)
     uniques: list = field(default_factory=list)
     foods: list = field(default_factory=list)
+    cheat_risk: list = field(default_factory=list)
 
 
 def format_created(unix_seconds) -> str:
@@ -101,4 +103,5 @@ def summarize(root_save: dict, player_data: dict) -> CharacterSummary:
         materials=item_labels(data.get("known_material")),
         uniques=item_labels(data.get("uniques")),
         foods=food_labels(data.get("foods")),
+        cheat_risk=risk_lines(from_character(root, data)),
     )

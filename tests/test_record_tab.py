@@ -37,6 +37,19 @@ class RecordTabTests(unittest.TestCase):
         self.assertEqual(editable, [])
         dispose(tab)
 
+    def test_the_record_tab_shows_the_achievement_risk_section(self):
+        tab = RecordTab()
+        flagged = realistic_root_save()
+        flagged["used_cheats"] = True
+        tab.load_data(realistic_player_data(), flagged)
+        self.assertEqual(tab.groups["cheat_risk"].title(), "Achievement risk (4)")
+        self.assertIn("set", list_texts(tab.lists["cheat_risk"])[0])
+        tab.load_data(realistic_player_data(), realistic_root_save())
+        lines = list_texts(tab.lists["cheat_risk"])
+        self.assertEqual(len(lines), 4)
+        self.assertFalse(any("safe" in line.lower() for line in lines))
+        dispose(tab)
+
     def test_tab_clears_without_a_character(self):
         tab = RecordTab()
         tab.load_data(realistic_player_data(), realistic_root_save())

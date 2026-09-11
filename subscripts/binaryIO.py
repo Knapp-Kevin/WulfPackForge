@@ -5,6 +5,14 @@ import struct
 from subscripts.saveErrors import SaveFormatError
 
 STRING_ERRORS = "surrogateescape"
+BYTE_MAX = 0xFF
+USHORT_MAX = 0xFFFF
+
+
+def _require_range(value: int, top: int, name: str) -> None:
+    """Refuse a value the field cannot hold, so a save the game could not read is never written."""
+    if not 0 <= int(value) <= top:
+        raise SaveFormatError(f"{name} value {value} is outside 0..{top}.")
 
 
 class BinaryReader:
@@ -28,6 +36,12 @@ class BinaryReader:
 
     def read_bool(self) -> bool:
         return self.read_bytes(1)[0] != 0
+
+    def read_byte(self) -> int:
+        return self.read_bytes(1)[0]
+
+    def read_ushort(self) -> int:
+        return struct.unpack("<H", self.read_bytes(2))[0]
 
     def read_long(self) -> int:
         return struct.unpack("<q", self.read_bytes(8))[0]
@@ -78,6 +92,14 @@ class BinaryWriter:
 
     def write_bool(self, val: bool):
         self.stream.write(b"\x01" if val else b"\x00")
+
+    def write_byte(self, val: int):
+        _require_range(val, BYTE_MAX, "byte")
+        self.stream.write(bytes([int(val)]))
+
+    def write_ushort(self, val: int):
+        _require_range(val, USHORT_MAX, "ushort")
+        self.stream.write(struct.pack("<H", int(val)))
 
     def write_long(self, val: int):
         self.stream.write(struct.pack("<q", val))
