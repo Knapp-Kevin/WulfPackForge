@@ -119,7 +119,7 @@ Current states:
 - `Compatibility unverified`
 - `Needs attention`
 
-A file that parses successfully is not automatically considered writable. Write validation covers character-save versions 40 through 43; player-data version 29, inventory version 106, and skill version 2 are checked separately as the supported inner layout.
+A file that parses successfully is not automatically considered writable. Write validation covers character-save versions 40 through 43 and the version 46 container Valheim 1.0 writes; the inner payload is checked separately and is writable at player-data version 29 with inventory version 106, or player-data version 33 with inventory version 109, both with skill version 2.
 
 ### `subscripts/logSetup.py`
 
@@ -266,7 +266,7 @@ The packaged smoke test verifies that critical generated, branding, and glyph as
 
 Game-version compatibility is explicit state, not an assumption.
 
-The parser reads character-save versions 40 and newer exactly and refuses older layouts with a clear error. Writing is enabled for character-save versions 40 through 43 (each round-tripped byte-identical on real saves) whose player payload reports player-data version 29, inventory version 106, and skill version 2; any other combination is inspectable but read-only (`Compatibility unverified`). Both decoders reject a save that leaves bytes unconsumed, so a newer layout can never be silently truncated on save.
+The parser reads character-save versions 40 and newer exactly and refuses older layouts with a clear error. Writing is enabled for character-save versions 40 through 43 and 46 (each round-tripped byte-identical on real saves) whose player payload reports either player-data version 29 with inventory version 106, or player-data version 33 with inventory version 109, and skill version 2 in both cases; any other combination is inspectable but read-only (`Compatibility unverified`). Both decoders reject a save that leaves bytes unconsumed, so a newer layout can never be silently truncated on save.
 
 A new Valheim version can affect:
 
