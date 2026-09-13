@@ -16,7 +16,7 @@ APP = QApplication.instance() or QApplication([])
 
 
 def fake_record(name="Ares"):
-    state = CharacterState(path=f"C:/saves/{name.lower()}.fch", kind="active", source="Local", name=name, player_id=1,
+    state = CharacterState(path=f"C:/saves/{name.lower()}.fch", kind="active", source="Valheim, local folder", name=name, player_id=1,
                            date_created=1, modified_at=1_700_000_000.0, size=10, version=43, valid=True)
     return CharacterRecord(key="1:1", name=name, states=[state])
 

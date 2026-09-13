@@ -19,7 +19,7 @@ class SaveStatusWidgetTests(QtTestCase):
         report = build_save_health_report(
             valid=True,
             version=43,
-            source="Steam Cloud (local copy)",
+            source="Active save (Valheim, Steam Cloud folder)",
             modified_at=1_700_000_000,
             backup_path="/tmp/frostwulf.fch.20260906.bak",
         )
@@ -28,7 +28,7 @@ class SaveStatusWidgetTests(QtTestCase):
 
         self.assertEqual(widget.state_label.text(), "Verified")
         self.assertIn("Save v43", widget.meta_label.text())
-        self.assertIn("Steam Cloud (local copy)", widget.meta_label.text())
+        self.assertIn("Active save (Valheim, Steam Cloud folder)", widget.meta_label.text())
         self.assertIn("Catalog: Valheim", widget.meta_label.text())
         self.assertIn("Backup: frostwulf.fch.20260906.bak", widget.meta_label.text())
         self.assertIn("protected workspace snapshot", widget.detail_label.text())
@@ -55,7 +55,7 @@ class SaveStatusWidgetTests(QtTestCase):
         report = build_save_health_report(
             valid=True,
             version=43,
-            source="Steam Cloud (local copy)",
+            source="Active save (Valheim, Steam Cloud folder)",
             modified_at=1_700_000_000,
             source_changed=True,
         )
@@ -63,7 +63,7 @@ class SaveStatusWidgetTests(QtTestCase):
         widget.set_report(report)
 
         self.assertEqual(widget.state_label.text(), "Needs attention")
-        self.assertIn("Steam Cloud (local copy)", widget.meta_label.text())
+        self.assertIn("Active save (Valheim, Steam Cloud folder)", widget.meta_label.text())
         self.assertIn("changed outside Wulfpack Forge", widget.detail_label.text())
 
     def test_clear_returns_to_neutral_state(self):

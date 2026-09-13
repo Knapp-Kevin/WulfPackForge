@@ -17,9 +17,10 @@ SCANNING_LABEL = "Scanning for characters…"
 POLL_MS = 50
 
 NO_CHARACTERS_HELP = (
-    "No local character files were found. If this character is stored in Steam Cloud, "
-    "make sure Steam has synchronized it to this computer and that Valheim can see it locally, "
-    "then click Refresh. Wulfpack Forge does not download saves directly from Steam Cloud. "
+    "No character files were found in Valheim's save folders or in Steam's userdata folder. "
+    "Wulfpack Forge reads both; with Steam Cloud on, the game itself decides which folder holds the "
+    "live file. Make sure Steam has synchronized the character to this computer and that Valheim can "
+    "see it, then click Refresh. Wulfpack Forge does not download saves directly from Steam Cloud. "
     "Use Browse for Another Save if you already have the .fch file elsewhere."
 )
 
@@ -69,7 +70,7 @@ class CharacterPickerBar(QWidget):
         self.character_combo = QComboBox()
         self.character_combo.setMinimumWidth(420)
         self.character_combo.setToolTip(
-            "Verified Valheim character files found on this computer, including local copies synchronized by Steam Cloud."
+            "Verified Valheim character files found on this computer, in Valheim's own save folders and in Steam's userdata folder."
         )
         self.btn_refresh_characters = QPushButton("Refresh")
         self.btn_open_discovered = QPushButton("Open Character")
@@ -160,10 +161,10 @@ class CharacterPickerBar(QWidget):
         self.discovery_help.setVisible(True)
 
     def metadata_for(self, filename):
-        """``(source, modified_at)`` for a path, from discovery when known, else from the filesystem."""
+        """``(where, modified_at)`` for a path, from discovery when known, else from the filesystem."""
         found = find_state(self.records, filename)
         if found:
-            return found[1].source, found[1].modified_at
+            return found[1].where, found[1].modified_at
         try:
             modified_at = os.path.getmtime(filename)
         except OSError:
@@ -179,7 +180,7 @@ class CharacterPickerBar(QWidget):
         head = record.head if record else None
         if head is None:
             return
-        details = [f"Active save: {head.path}", f"Source: {head.source}", f"Modified: {head.modified_label}",
+        details = [f"Active save: {head.path}", f"Location: {head.where}", f"Modified: {head.modified_label}",
                    f"States: {len(record.states)}"]
         if head.version is not None:
             details.append(f"Save version: {head.version}")

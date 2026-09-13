@@ -75,6 +75,17 @@ class WorkspaceTests(unittest.TestCase):
             metadata = json.loads(Path(session.metadata_path).read_text(encoding="utf-8"))
             self.assertEqual(metadata["character_name"], save_data["character_name"])
 
+    def test_apply_logs_the_destination_and_backup_paths(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = compile_save(root, minimal_save_data())
+            session = create_workspace_session(str(source), minimal_save_data(), workspace_root=root / "ws")
+            with self.assertLogs("subscripts.workspace", level="INFO") as caught:
+                session.update_after_apply(str(root / "ws" / "hero.fch.20260912.bak"))
+        line = "\n".join(caught.output)
+        self.assertIn(str(source.resolve()), line)
+        self.assertIn("hero.fch.20260912.bak", line)
+
     def test_external_source_change_is_detected_without_touching_snapshot(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)

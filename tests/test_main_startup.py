@@ -3,6 +3,7 @@
 Audit iteration 2 found nothing in the suite imported ``main``, so every promise about
 ``main()`` was asserted by the plan and verified by nothing.
 """
+import json
 import logging
 import tempfile
 import unittest
@@ -13,7 +14,8 @@ from PySide6.QtWidgets import QApplication
 
 import main as main_module
 from subscripts import characterRecords, logSetup
-from subscripts.crashReports import REPORT_GLOB, reports_dir
+from subscripts.crashReports import REPORT_GLOB, acknowledge, reports_dir
+from subscripts.workspace import _character_id
 from subscripts.logSetup import detach_logging
 from tests.qt_support import dispose_all
 
@@ -84,6 +86,29 @@ class MainStartupTests(unittest.TestCase):
         window, reports = notice.call_args[0]
         self.assertIsInstance(window, main_module.MainWindow)
         self.assertEqual(list(reports), [report])
+
+    def test_the_notice_is_shown_on_the_launch_after_a_crash_and_not_on_the_next(self):
+        report = self._plant_report()
+        seen = []
+        with patch.object(QApplication, "exec", return_value=0), \
+                patch.object(main_module, "show_crash_notice",
+                             side_effect=lambda _window, reports: seen.append(list(reports)) or
+                             (acknowledge(reports[0]) if reports else None)):
+            self.assertEqual(self._run(), 0)
+            self.assertEqual(self._run(), 0)
+        self.assertEqual(seen, [[report], []])
+        self.assertTrue(report.with_name("crash-20260908T151056Z-4242.seen.log").is_file())
+
+    def test_startup_consolidates_the_workspace(self):
+        active = self.root / "WulfpackForge" / "characters" / "active"
+        old = active / "Ares-000000000abc"
+        (old / "source").mkdir(parents=True)
+        (old / "source" / "20260907T022140Z-opened.fch").write_bytes(b"snapshot")
+        (old / "metadata.json").write_text(json.dumps({"character_name": "Ares", "player_id": 1628568792}), encoding="utf-8")
+        with patch.object(main_module, "show_crash_notice"):
+            self.assertEqual(self._run("--smoke-test"), 0)
+        self.assertFalse(old.exists())
+        self.assertTrue((active / _character_id("Ares", 1628568792) / "source" / "20260907T022140Z-opened.fch").is_file())
 
     def test_the_startup_banner_is_logged(self):
         with self.assertLogs(main_module.__name__, level=logging.INFO) as caught, \

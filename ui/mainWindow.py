@@ -30,7 +30,7 @@ from subscripts.playerDataUtil import pack_player_data_hex, payload_is_supported
 logger = logging.getLogger(__name__)
 __all__ = ["MainWindow", "BANNER_MAX_HEIGHT", "BANNER_MIN_HEIGHT", "banner_height_for"]
 
-_EMPTY_STATE = dict(root_save=None, opened_root=None, player_data=None, current_fch=None, current_source="Local file",
+_EMPTY_STATE = dict(root_save=None, opened_root=None, player_data=None, current_fch=None, current_source="File",
                     current_modified_at=None, current_payload_supported=True, workspace_session=None)
 
 

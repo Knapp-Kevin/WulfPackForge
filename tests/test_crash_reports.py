@@ -13,6 +13,7 @@ from subscripts import crashReports
 from subscripts.crashReports import (
     EMPTY_REPORT_CAP,
     REPORT_GLOB,
+    acknowledge,
     install,
     previous_reports,
     prune_reports,
@@ -195,6 +196,33 @@ class CrashReportTests(unittest.TestCase):
         _write(self.logs / "crash-20260908T090000Z-1.log", "x")
         with patch.object(Path, "glob", side_effect=OSError("permission denied")):
             self.assertEqual(previous_reports(self.root), [])
+
+    # -------------------------------------------------------------- acknowledging
+    def test_acknowledge_renames_the_report_and_hides_it_from_previous_reports(self):
+        report = _write(self.logs / "crash-20260909T023025Z-1.log", "x")
+        self.assertEqual(previous_reports(self.root), [report])
+        seen = acknowledge(report)
+        self.assertEqual(seen, self.logs / "crash-20260909T023025Z-1.seen.log")
+        self.assertFalse(report.exists())
+        self.assertTrue(seen.is_file())
+        self.assertEqual(previous_reports(self.root), [])
+
+    def test_acknowledge_is_safe_twice_and_on_a_missing_file(self):
+        report = _write(self.logs / "crash-20260909T023025Z-1.log", "x")
+        seen = acknowledge(report)
+        self.assertIsNone(acknowledge(seen))
+        self.assertTrue(seen.is_file())
+        self.assertIsNone(acknowledge(self.logs / "crash-20260909T023025Z-9.log"))
+
+    def test_prune_counts_acknowledged_reports_toward_retention(self):
+        oldest = _write(self.logs / "crash-20260901T000000Z-1.log", "x", age_seconds=600)
+        for index in range(2, 7):
+            path = _write(self.logs / f"crash-20260901T00000{index}Z-{index}.log", "x", age_seconds=600 - index * 60)
+            if index >= 4:
+                acknowledge(path)
+        removed = prune_reports(self.root, keep=5)
+        self.assertEqual(removed, [oldest])
+        self.assertEqual(len(_reports(self.root)), 5)
 
     # -------------------------------------------------------------- pruning
     def test_prune_removes_over_retention_non_empty_reports(self):

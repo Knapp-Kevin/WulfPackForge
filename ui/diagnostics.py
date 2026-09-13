@@ -95,8 +95,9 @@ def build_crash_notice(parent, report_path) -> QMessageBox:
 
 
 def show_crash_notice(parent, reports: Sequence[Path]) -> None:
-    """Name the newest crash report once, then dispose the dialog."""
+    """Name the newest crash report once, dispose the dialog, and mark the report as shown."""
     if not reports:
         return
     with modal(build_crash_notice(parent, reports[0])) as box:
         box.exec()
+    crashReports.acknowledge(reports[0])

@@ -4,6 +4,7 @@ import sys
 from PySide6.QtWidgets import QApplication
 
 from subscripts.crashReports import release
+from subscripts.workspaceConsolidation import consolidate_workspaces
 from subscripts.logSetup import configure_logging, install_excepthook
 
 from ui.branding import APP_VERSION, app_icon
@@ -46,6 +47,7 @@ def main():
     logger.info("%s", environment_banner(report_path))
     try:
         apply_overrides(default_workspace_root())  # scanned mod names and icons, if the user ran a mod scan
+        consolidate_workspaces(default_workspace_root())  # one directory per character, keyed on player_id
         app = QApplication(sys.argv)
         app.setWindowIcon(app_icon())
         window = MainWindow(startup_warning=not smoke)

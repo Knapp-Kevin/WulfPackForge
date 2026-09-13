@@ -124,6 +124,7 @@ class WorkspaceSession:
         self.working_sha256 = file_sha256(self.working_path)
         self.last_applied_at = _utc_iso()
         self.last_backup_path = backup_path
+        logger.info("Changes applied to %s; previous save backed up to %s", self.source_path, backup_path)
         self.persist()
         prune_workspace(Path(self.workspace_dir))
 
@@ -142,7 +143,7 @@ def create_workspace_session(
 
     character_name = str(root_save.get("character_name") or source.stem).strip() or source.stem
     player_id = root_save.get("player_id")
-    character_id = _character_id(character_name, player_id, root_save.get("date_created_unix"))
+    character_id = _character_id(character_name, player_id)
     workspace_dir, source_dir, working_dir, backups_dir = _workspace_dirs(workspace_root, character_id)
     opened_hash, stat = file_sha256(source), source.stat()
     snapshot_path = _snapshot_source(source, source_dir)
@@ -188,9 +189,9 @@ def _workspace_dirs(workspace_root: Optional[Path], character_id: str):
     return (workspace_dir, *dirs)
 
 
-def _character_id(character_name: str, player_id, date_created) -> str:
-    """Stable per character: every copy of a save (active, .old, backups) shares one workspace."""
-    identity_seed = f"{player_id if player_id is not None else ''}|{date_created if date_created is not None else ''}".encode("utf-8")
+def _character_id(character_name: str, player_id) -> str:
+    """Stable per character: the game never rewrites ``player_id``, so every copy of a save shares one workspace."""
+    identity_seed = f"{player_id if player_id is not None else ''}".encode("utf-8")
     identity = hashlib.sha256(identity_seed).hexdigest()[:12]
     return f"{_slug(character_name)}-{identity}"
 
