@@ -121,6 +121,14 @@ class CrashNoticeTests(QtTestCase):
             show_crash_notice(None, [REPORT])
         self.assertTrue(getattr(RecordingMessageBox.built[0], "deleted", False))
 
+    def test_show_crash_notice_acknowledges_the_report_it_showed(self):
+        older = REPORT.with_name("crash-20260907T090000Z-7.log")
+        RecordingMessageBox.built = []
+        with patch.object(diagnostics, "QMessageBox", RecordingMessageBox), \
+                patch.object(diagnostics.crashReports, "acknowledge") as acknowledged:
+            show_crash_notice(None, [REPORT, older])
+        acknowledged.assert_called_once_with(REPORT)
+
     def test_show_folder_opens_the_report_directory(self):
         with patch.object(diagnostics.QDesktopServices, "openUrl") as opened:
             open_report_folder(REPORT)

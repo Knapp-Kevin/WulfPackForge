@@ -39,7 +39,7 @@ class CharacterStatesDialog(QDialog):
 
     def _fill_row(self, row: int, state) -> None:
         status = "verified" if state.valid else f"needs attention: {state.error}"
-        cells = (state.kind_label, state.path, state.modified_label, str(state.version or "?"), status)
+        cells = (state.kind_label, f"{state.source}: {state.path}", state.modified_label, str(state.version or "?"), status)
         for column, text in enumerate(cells):
             item = QTableWidgetItem(text)
             item.setData(Qt.UserRole, state.path)

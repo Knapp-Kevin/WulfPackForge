@@ -12,6 +12,15 @@ from subscripts.saveSafety import verify_fch_round_trip
 
 VALHEIM_APP_ID = "892970"
 
+# What the picker calls each folder Valheim itself may write to. None of them is a "copy":
+# with Steam Cloud on, the 1.0 client writes the live file under Steam's userdata folder and
+# leaves only .old and auto-backups under characters_local; the game decides, per character.
+SOURCE_LABELS = {
+    "local": "Valheim, local folder",
+    "steam-cloud": "Valheim, Steam Cloud folder",
+    "steam-local": "Valheim, Steam local folder",
+}
+
 
 @dataclass(frozen=True)
 class CharacterSave:
@@ -116,14 +125,15 @@ def candidate_character_directories(
 ) -> List[tuple[Path, str]]:
     """Return character directories that already exist on the local computer.
 
-    Steam Cloud entries here are local synchronized copies under Steam's userdata
-    tree. Wulfpack Forge does not query or download remote Steam Cloud storage.
+    Both Valheim's own save folders and the Steam userdata folders are searched; the game
+    decides which of them holds a character's live file. Wulfpack Forge does not query or
+    download remote Steam Cloud storage.
     """
     home = Path(home or Path.home())
     system_name = system_name or platform.system()
 
     candidates: List[tuple[Path, str]] = [
-        (path, "Local") for path in _local_save_roots(home, system_name)
+        (path, SOURCE_LABELS["local"]) for path in _local_save_roots(home, system_name)
     ]
     for userdata_root in _existing_directories(_steam_userdata_roots(home, system_name)):
         candidates.extend(_steam_character_dirs(userdata_root))
@@ -138,8 +148,8 @@ def _steam_character_dirs(userdata_root: Path) -> List[tuple[Path, str]]:
     found = []
     for account_dir in account_dirs:
         remote = account_dir / VALHEIM_APP_ID / "remote"
-        found.append((remote / "characters", "Steam Cloud (local copy)"))
-        found.append((remote / "characters_local", "Steam local copy"))
+        found.append((remote / "characters", SOURCE_LABELS["steam-cloud"]))
+        found.append((remote / "characters_local", SOURCE_LABELS["steam-local"]))
     return found
 
 

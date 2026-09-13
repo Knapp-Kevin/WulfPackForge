@@ -1,12 +1,12 @@
 """One character, many states.
 
-A *record* is a Valheim character identified by ``(player_id, date_created_unix)``
-read from the verified container. A *state* is any file that verifies as that
-identity: the active save, Valheim's ``.fch.old`` and ``_backup`` copies, and the
-Wulfpack Forge workspace snapshots, working copy, and backups. Nothing here
-writes to a save; restoring a state is a pending edit applied through Save Changes.
+A *record* is a Valheim character identified by its ``player_id`` read from the
+verified container; the creation stamp is display data only, because the 1.0 client
+rewrites it on every load. A *state* is any file that verifies as that identity: the
+active save, Valheim's ``.fch.old`` and ``_backup`` copies, and the Wulfpack Forge
+workspace snapshots, working copy, and backups. Nothing here writes to a save;
+restoring a state is a pending edit applied through Save Changes.
 """
-import json
 import os
 import platform
 from dataclasses import dataclass, field
@@ -18,10 +18,11 @@ from subscripts.characterDiscovery import candidate_character_directories
 from subscripts.playerDataUtil import unpack_player_data_hex
 from subscripts.saveErrors import SaveFormatError
 from subscripts.saveSafety import verify_fch_round_trip
+from subscripts.stateCache import StateCache
 from subscripts.workspace import default_workspace_root
 
 KIND_LABELS = {
-    "active": "Active save", "game-old": "Valheim previous (.old)", "game-backup": "Valheim backup",
+    "active": "Active save", "game-old": "Valheim previous save", "game-backup": "Valheim backup",
     "workspace-snapshot": "Opened snapshot", "workspace-working": "Working copy",
     "workspace-backup": "Pre-replace backup", "manual": "File",
 }
@@ -50,6 +51,11 @@ class CharacterState:
     def modified_label(self) -> str:
         return datetime.fromtimestamp(self.modified_at).strftime("%Y-%m-%d %H:%M")
 
+    @property
+    def where(self) -> str:
+        """Kind and folder in one phrase: "Active save (Valheim, Steam Cloud folder)"."""
+        return f"{self.kind_label} ({self.source})"
+
 
 @dataclass
 class CharacterRecord:
@@ -76,12 +82,12 @@ class CharacterRecord:
         head = self.head
         count = f"{len(self.states)} state{'s' if len(self.states) != 1 else ''}"
         status = "" if self.valid else " [needs attention]"
-        where = f" — {head.source} — {head.modified_label}" if head else ""
+        where = f" — {head.where} — {head.modified_label}" if head else ""
         return f"{self.name} — {count}{where}{status}"
 
 
-def character_key(player_id: Optional[int], date_created: Optional[int]) -> str:
-    return f"{player_id}:{date_created}"
+def character_key(player_id: Optional[int]) -> str:
+    return str(player_id)
 
 
 def classify_path(path: Path, workspace_root: Path) -> str:
@@ -98,37 +104,6 @@ def classify_path(path: Path, workspace_root: Path) -> str:
     if "_backup" in lowered:
         return "game-backup"
     return "active" if lowered.endswith(".fch") else "manual"
-
-
-class StateCache:
-    """Remembers parsed identity per path keyed on size and mtime so unchanged files skip verification."""
-
-    def __init__(self, path: Optional[Path]):
-        self.path = path
-        self.entries: Dict[str, dict] = {}
-        if path and path.is_file():
-            try:
-                self.entries = json.loads(path.read_text(encoding="utf-8")).get("entries", {})
-            except (OSError, ValueError):
-                self.entries = {}
-
-    def lookup(self, path: str, size: int, mtime_ns: int) -> Optional[dict]:
-        entry = self.entries.get(path)
-        if entry and entry.get("size") == size and entry.get("mtime_ns") == mtime_ns:
-            return entry["fields"]
-        return None
-
-    def store(self, path: str, size: int, mtime_ns: int, fields: dict) -> None:
-        self.entries[path] = {"size": size, "mtime_ns": mtime_ns, "fields": fields}
-
-    def save(self) -> None:
-        if not self.path:
-            return
-        try:
-            self.path.parent.mkdir(parents=True, exist_ok=True)
-            self.path.write_text(json.dumps({"schema_version": 1, "entries": self.entries}), encoding="utf-8")
-        except OSError:
-            pass
 
 
 def _identity_fields(path: Path) -> dict:
@@ -202,7 +177,7 @@ def build_records(states: Iterable[CharacterState]) -> List[CharacterRecord]:
     """Group states by identity; unverifiable files stand alone. Newest first inside and across records."""
     grouped: Dict[str, CharacterRecord] = {}
     for state in sorted(states, key=lambda s: -s.modified_at):
-        key = character_key(state.player_id, state.date_created) if state.valid else f"invalid:{os.path.normcase(state.path)}"
+        key = character_key(state.player_id) if state.valid else f"invalid:{os.path.normcase(state.path)}"
         record = grouped.setdefault(key, CharacterRecord(key=key, name=state.name))
         record.states.append(state)
     records = list(grouped.values())

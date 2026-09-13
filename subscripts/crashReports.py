@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 REPORT_PREFIX = "crash-"
 REPORT_SUFFIX = ".log"
 REPORT_GLOB = f"{REPORT_PREFIX}*{REPORT_SUFFIX}"
+SEEN_SUFFIX = ".seen.log"  # an acknowledged report: shown once, kept for retention, never announced again
 REPORT_RETENTION = 5  # non-empty reports kept
 EMPTY_REPORT_CAP = 5  # empty reports kept regardless of age
 EMPTY_REPORT_MAX_AGE = 86400  # an empty report younger than this is always kept (seconds)
@@ -106,8 +107,27 @@ def _scan(root: Optional[Path]) -> List[Tuple[Path, int, float]]:
 
 
 def previous_reports(root: Optional[Path] = None) -> List[Path]:
-    """Reports an earlier run actually wrote to, newest first. Never raises."""
-    return [path for path, size, _ in _scan(root) if size > 0 and path != _path]
+    """Reports an earlier run wrote to and no notice has shown yet, newest first. Never raises."""
+    return [path for path, size, _ in _scan(root)
+            if size > 0 and path != _path and not path.name.endswith(SEEN_SUFFIX)]
+
+
+def acknowledge(path: Path) -> Optional[Path]:
+    """Rename a report the notice has shown so it is not announced again. Never raises.
+
+    The new name still matches ``REPORT_GLOB``, so retention counts it; the suffix is a
+    whole-name test, nothing is parsed out of the filename.
+    """
+    path = Path(path)
+    if path.name.endswith(SEEN_SUFFIX):
+        return None
+    target = path.with_name(path.name[:-len(REPORT_SUFFIX)] + SEEN_SUFFIX)
+    try:
+        path.rename(target)
+    except OSError as exc:
+        logger.warning("Could not acknowledge crash report %s: %s", path, exc)
+        return None
+    return target
 
 
 def prune_reports(root: Optional[Path] = None, keep: int = REPORT_RETENTION) -> List[Path]:

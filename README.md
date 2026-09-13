@@ -52,7 +52,7 @@ The current build enables saving for character-save format versions 40 through 4
 
 ## See it in action
 
-The compact status card tells you whether the selected save is verified for editing, where the local copy came from, and whether Wulfpack Forge has a protected backup.
+The compact status card tells you whether the selected save is verified for editing, which folder holds the active save, and whether Wulfpack Forge has a protected backup.
 
 ![Wulfpack Forge main window showing a verified synthetic character, synthetic source, save version, catalog version, and workspace backup](docs/screenshots/main-status.png)
 
@@ -134,7 +134,7 @@ Wulfpack Forge writes these appearance values as the same floating-point RGB fie
 
 Wulfpack Forge reads **character files that exist on the local computer**.
 
-It searches the normal Valheim local-save directories and Steam userdata locations for `.fch` files that have been synchronized to disk. On Windows, it first reads `HKCU\Software\Valve\Steam\SteamPath` and searches that Steam installation's `userdata` tree, so a Steam library outside Program Files is discovered. Program Files and `STEAM_DIR` remain fallbacks. Files are grouped into character records by the player id and creation stamp inside each save, so the active file, Valheim's `.fch.old` and `_backup` copies, and Wulfpack Forge's own snapshots and backups appear as states of one character rather than as separate entries. A character that exists only remotely in Steam Cloud cannot be opened until Steam has downloaded or synchronized a local copy.
+It searches the normal Valheim local-save directories and Steam userdata locations for `.fch` files that have been synchronized to disk. On Windows, it first reads `HKCU\Software\Valve\Steam\SteamPath` and searches that Steam installation's `userdata` tree, so a Steam library outside Program Files is discovered. Program Files and `STEAM_DIR` remain fallbacks. Files are grouped into character records by the player id inside each save (the creation date is shown on the Record tab but is not part of the identity, because Valheim 1.0 rewrites it on every load), so the active file, Valheim's `.fch.old` and `_backup` copies, and Wulfpack Forge's own snapshots and backups appear as states of one character rather than as separate entries. Both of Valheim's folders are read: the game's own save folder and Steam's userdata folder. With Steam Cloud on, Valheim 1.0 writes a character's live file under the Steam folder and leaves only `.fch.old` and auto-backups in the local one, and a character not played since 1.0 stays live in the local folder; the picker calls the newest verified active file across both folders the **Active save** and names its folder, so the editor always works on the file the game will read next. A character that exists only remotely in Steam Cloud cannot be opened until Steam has synchronized it to this computer.
 
 If no character appears:
 

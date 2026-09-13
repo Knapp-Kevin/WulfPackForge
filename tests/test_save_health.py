@@ -54,11 +54,12 @@ class SaveHealthTests(unittest.TestCase):
         report = build_save_health_report(
             valid=True,
             version=44,
-            source="Steam Cloud (local copy)",
+            source="Active save (Valheim, Steam Cloud folder)",
             modified_at=1_700_000_000,
         )
 
         self.assertEqual(report.state, SAVE_STATE_COMPATIBILITY_UNVERIFIED)
+        self.assertEqual(report.source, "Active save (Valheim, Steam Cloud folder)")
         self.assertTrue(report.verification_ok)
         self.assertFalse(report.writable)
         self.assertIn("save version 44", report.detail.lower())
@@ -96,12 +97,13 @@ class SaveHealthTests(unittest.TestCase):
         report = build_save_health_report(
             valid=True,
             version=43,
-            source="Steam Cloud (local copy)",
+            source="Active save (Valheim, Steam Cloud folder)",
             modified_at=1_700_000_000,
             source_changed=True,
         )
 
         self.assertEqual(report.state, SAVE_STATE_NEEDS_ATTENTION)
+        self.assertEqual(report.source, "Active save (Valheim, Steam Cloud folder)")
         self.assertTrue(report.verification_ok)
         self.assertFalse(report.writable)
         self.assertTrue(report.source_changed)

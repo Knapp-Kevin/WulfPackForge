@@ -68,7 +68,7 @@ def build_save_health_report(
     source_changed: bool = False,
     payload_supported: bool = True,
 ) -> SaveHealthReport:
-    source = (source or "Local file").strip() or "Local file"
+    source = (source or "File").strip() or "File"
     common = dict(save_version=version, source=source, modified_at=modified_at,
                   catalog_game_version=catalog_game_version, backup_path=backup_path)
 

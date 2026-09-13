@@ -20,8 +20,11 @@ HAIR_LIGHTNESS = 88      # HSL lightness at or above this is hair mass; below is
 _HAIR_FULL = 128         # lightness that maps to the full hair colour
 _HEAD_FULL = 44          # lightness that maps to the full skin colour
 _LAYERS: Dict[Tuple[str, str, int], Tuple[QPixmap, QPixmap]] = {}
-_ANCHORS: Dict[Tuple[str, str, int], Tuple[int, int, int]] = {}  # head layer: left, right, bottom
+_ANCHORS: Dict[Tuple[str, str, int], Tuple[int, int, int]] = {}  # head layer: left, right, row of the ear line
 _ANCHOR_ALPHA = 128
+_SHOULDER_FRACTION = 0.9  # a row this wide, relative to the widest, is where the shoulders begin
+_EAR_BAND_TOP = 0.25      # the ear line is sought below this fraction of the image height...
+_EAR_BAND_GAP = 0.1       # ...and above the shoulder top by this fraction of the image height
 
 
 def _to_qcolor(rgb: Sequence[float]) -> QColor:
@@ -73,11 +76,12 @@ def _grey(level: int, full: int) -> int:
     return min(255, level * 255 // full)
 
 
-def _split(source: QImage) -> Tuple[QImage, QImage, Tuple[int, int, int]]:
+def _split(source: QImage) -> Tuple[QImage, QImage, Dict[int, Tuple[int, int]]]:
+    """Head and hair layers plus, per row, the leftmost and rightmost dark pixel."""
     width, height, stride = source.width(), source.height(), source.bytesPerLine()
     pixels = bytes(source.constBits())
     head, hair = bytearray(len(pixels)), bytearray(len(pixels))
-    left, right, bottom = width, 0, 0
+    rows: Dict[int, Tuple[int, int]] = {}
     for i in range(0, len(pixels), 4):
         b, g, r, a = pixels[i:i + 4]
         if a == 0:
@@ -89,7 +93,8 @@ def _split(source: QImage) -> Tuple[QImage, QImage, Tuple[int, int, int]]:
         target[i:i + 4] = bytes((grey, grey, grey, a))
         if not is_hair and a > _ANCHOR_ALPHA:
             x, y = (i // 4) % (stride // 4), (i // 4) // (stride // 4)
-            left, right, bottom = min(left, x), max(right, x), max(bottom, y)
+            low, high = rows.get(y, (x, x))
+            rows[y] = (min(low, x), max(high, x))
 
     def to_image(buf: bytearray) -> QImage:
         # Copy into a Qt-owned image: constructing a QImage over a Python buffer leaves Qt with a
@@ -98,7 +103,23 @@ def _split(source: QImage) -> Tuple[QImage, QImage, Tuple[int, int, int]]:
         image.bits()[:len(buf)] = bytes(buf)
         return image
 
-    return to_image(head), to_image(hair), (left, right, bottom)
+    return to_image(head), to_image(hair), rows
+
+
+def _anchor(rows: Dict[int, Tuple[int, int]], height: int) -> Tuple[int, int, int]:
+    """``(left, right, row)`` of the ear line: the widest dark row between a quarter of the
+    height and the shoulders, the lowest tied row winning; the shoulders' extents and bottom
+    row when that band holds no row (long hair over the ears, or a thumbnail without a head)."""
+    if not rows:
+        return 0, 0, 0
+    widest = max(high - low for low, high in rows.values())
+    shoulder_top = min(y for y, (low, high) in rows.items() if high - low >= _SHOULDER_FRACTION * widest)
+    band = [y for y in rows if height * _EAR_BAND_TOP <= y < shoulder_top - height * _EAR_BAND_GAP]
+    if band:
+        best = max(rows[y][1] - rows[y][0] for y in band)
+        row = max(y for y in band if rows[y][1] - rows[y][0] == best)
+        return rows[row][0], rows[row][1], row
+    return min(low for low, _ in rows.values()), max(high for _, high in rows.values()), max(rows)
 
 
 def split_layers(kind: str, key: str, size: int = PREVIEW_SIZE) -> Tuple[QPixmap, QPixmap]:
@@ -111,15 +132,15 @@ def split_layers(kind: str, key: str, size: int = PREVIEW_SIZE) -> Tuple[QPixmap
     if source.isNull():
         layers = (QPixmap(), QPixmap())
     else:
-        head, hair, anchor = _split(source)
+        head, hair, rows = _split(source)
         layers = (QPixmap.fromImage(head), QPixmap.fromImage(hair))
-        _ANCHORS[cache_key] = anchor
+        _ANCHORS[cache_key] = _anchor(rows, source.height())
     _LAYERS[cache_key] = layers
     return layers
 
 
 def beard_transform(hair: str, beard: str, size: int = PREVIEW_SIZE) -> Tuple[float, float, float]:
-    """``(scale, dx, dy)`` that maps the beard image's shoulders onto the hair image's shoulders."""
+    """``(scale, dx, dy)`` that maps the beard image's ear line onto the hair image's ear line."""
     split_layers("hair", hair, size)
     split_layers("beard", beard, size)
     head_anchor = _ANCHORS.get(("hair", hair, size))

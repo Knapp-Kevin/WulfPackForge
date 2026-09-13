@@ -57,8 +57,8 @@ class CharacterDiscoveryTests(unittest.TestCase):
                 else:
                     os.environ["STEAM_DIR"] = previous
 
-            self.assertIn((local_dir.resolve(), "Local"), directories)
-            self.assertIn((cloud_dir.resolve(), "Steam Cloud (local copy)"), directories)
+            self.assertIn((local_dir.resolve(), "Valheim, local folder"), directories)
+            self.assertIn((cloud_dir.resolve(), "Valheim, Steam Cloud folder"), directories)
 
     def test_registry_steam_path_is_searched_on_windows(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -67,10 +67,10 @@ class CharacterDiscoveryTests(unittest.TestCase):
             cloud_dir.mkdir(parents=True)
             with patch.object(discovery, "registry_steam_path", return_value=home / "OtherDrive" / "steam"):
                 directories = candidate_character_directories(home=home, system_name="Windows")
-            self.assertIn((cloud_dir.resolve(), "Steam local copy"), directories)
+            self.assertIn((cloud_dir.resolve(), "Valheim, Steam local folder"), directories)
             with patch.object(discovery, "registry_steam_path", return_value=None):
                 directories = candidate_character_directories(home=home, system_name="Windows")
-            self.assertNotIn((cloud_dir.resolve(), "Steam local copy"), directories)
+            self.assertNotIn((cloud_dir.resolve(), "Valheim, Steam local folder"), directories)
 
     def test_steam_roots_per_platform(self):
         home = Path("/Users/viking")
@@ -105,7 +105,7 @@ class CharacterDiscoveryTests(unittest.TestCase):
 
             self.assertEqual(len(results), 1)
             self.assertEqual(results[0].name, "Kevin")
-            self.assertEqual(results[0].source, "Local")
+            self.assertEqual(results[0].source, "Valheim, local folder")
             self.assertTrue(results[0].valid)
             self.assertEqual(results[0].version, 43)
 

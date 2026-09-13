@@ -34,7 +34,7 @@ verification + external-change guard + atomic replacement
 active local .fch file
 ```
 
-Wulfpack Forge does not use a server or remote database for normal operation. Character files are read from the local machine. Steam Cloud characters participate only after Steam has synchronized a local copy.
+Wulfpack Forge does not use a server or remote database for normal operation. Character files are read from the local machine, from both of Valheim's folders (the game's own save folder and Steam's userdata folder); the game decides which folder holds a character's live file, and the newest verified active file is the one the editor treats as the character's save.
 
 ## Major components
 
@@ -62,13 +62,13 @@ Filesystem helpers for Save Changes: staging the verified working copy beside th
 
 ### `subscripts/characterRecords.py`
 
-Groups every save-like file (game folders: `*.fch`, `*.fch.old`, `_backup` copies; workspace: snapshots, working copy, backups) into one record per character identity `(player_id, date_created_unix)`. States are typed and sorted newest first; the head is the active save. A size-and-mtime cache under `<workspace root>/index/` keeps rescans cheap. Restoring a state is a pending edit for the head, applied by the ordinary Save Changes path.
+Groups every save-like file (game folders: `*.fch`, `*.fch.old`, `_backup` copies; workspace: snapshots, working copy, backups) into one record per character identity, the `player_id` alone: the game generates it once and never rewrites it, whereas Valheim 1.0 replaces `date_created_unix` with the calendar day on every load. States are typed and sorted newest first; the head is the newest verified active file across every folder, and each state's `where` names its kind and folder ("Active save (Valheim, Steam Cloud folder)"). A cache under `<workspace root>/index/` (`subscripts/stateCache.py`) keeps rescans cheap; it trusts a verdict only when size, mtime and the build's supported-version sets match, and forgets paths that no longer exist. Restoring a state is a pending edit for the head, applied by the ordinary Save Changes path.
 
 ### `subscripts/characterDiscovery.py`
 
 Finds `.fch` files in supported local Valheim directories and Steam userdata locations. On Windows, `HKCU\Software\Valve\Steam\SteamPath` is checked before the Program Files and `STEAM_DIR` fallbacks so non-default Steam installs participate in discovery.
 
-A Steam Cloud entry is discoverable only when a synchronized copy exists on disk. This component does not connect to remote Steam Cloud services.
+The Steam userdata folder is one of the folders Valheim itself writes to (with Steam Cloud on, the 1.0 client keeps the live file there), so discovery labels it "Valheim, Steam Cloud folder" and the game's own folder "Valheim, local folder" without calling either a copy. This component does not connect to remote Steam Cloud services.
 
 ### Local asset discovery and mod overrides
 
@@ -150,7 +150,7 @@ WulfpackForge/
 └── logs/wulfpack-forge.log
 ```
 
-The workspace directory is keyed by the character's identity (`player_id` and creation stamp), so every copy of a character shares one workspace. When a character is opened, the source must pass strict verification before the workspace is created. The workspace records an immutable source snapshot, a verified working copy, and the expected SHA-256 of the active source. The source snapshot is not edited during the session.
+The workspace directory is keyed by the character's identity (`player_id`), so every copy of a character shares one workspace; directories created under the earlier two-part key are merged into the identity directory once at startup by `subscripts/workspaceConsolidation.py`, which moves every file and deletes nothing. When a character is opened, the source must pass strict verification before the workspace is created. The workspace records an immutable source snapshot, a verified working copy, and the expected SHA-256 of the active source. The source snapshot is not edited during the session.
 
 The workspace is deliberately outside Valheim's save tree so Wulfpack Forge's own history is not mistaken for active game state or synchronized by Steam as additional characters.
 

@@ -1,4 +1,6 @@
 """User-facing dialog texts for the main window, kept apart from the flow that shows them."""
+import os
+
 from ui.branding import APP_NAME
 
 STARTUP_RUNNING_INFO = (
@@ -44,11 +46,11 @@ def not_saved(exc) -> str:
 
 
 def saved_ok(destination: str, backup_path) -> str:
-    text = f"Changes applied safely to:\n{destination}"
+    """One sentence; the status card shows the verified state and the log holds both paths."""
+    text = f"Changes saved to {os.path.basename(destination)}."
     if backup_path:
-        text += f"\n\nPrevious save backed up in the Wulfpack Forge workspace:\n{backup_path}"
-    return text + ("\n\nThe working copy passed checksum and round-trip verification, and the active file "
-                   "was confirmed unchanged before replacement.")
+        text += " A backup of the previous save is in the Wulfpack Forge workspace."
+    return text
 
 
 def previous_session_crashed(report_path) -> str:
