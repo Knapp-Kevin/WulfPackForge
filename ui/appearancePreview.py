@@ -14,17 +14,12 @@ from PySide6.QtWidgets import QLabel, QWidget
 
 from data.appearance import BEARD_NONE, HAIR_NONE, VALHEIM_BEARDS, VALHEIM_HAIRS
 from ui.glyphs import glyph_root, placeholder_pixmap, tint_pixmap
+from ui.previewLayers import _anchor, _split, _without_crown
 
 PREVIEW_SIZE = 256
-HAIR_LIGHTNESS = 88      # HSL lightness at or above this is hair mass; below is head
-_HAIR_FULL = 128         # lightness that maps to the full hair colour
-_HEAD_FULL = 44          # lightness that maps to the full skin colour
 _LAYERS: Dict[Tuple[str, str, int], Tuple[QPixmap, QPixmap]] = {}
-_ANCHORS: Dict[Tuple[str, str, int], Tuple[int, int, int]] = {}  # head layer: left, right, row of the ear line
-_ANCHOR_ALPHA = 128
-_SHOULDER_FRACTION = 0.9  # a row this wide, relative to the widest, is where the shoulders begin
-_EAR_BAND_TOP = 0.25      # the ear line is sought below this fraction of the image height...
-_EAR_BAND_GAP = 0.1       # ...and above the shoulder top by this fraction of the image height
+_ANCHORS: Dict[Tuple[str, str, int], Tuple[int, int, int, int]] = {}  # head layer: left, right, shoulder line, bottom
+_SHOULDER_CLAMP = 0.15  # a hair's shoulder line is never taken higher than this fraction of the height above its bottom
 
 
 def _to_qcolor(rgb: Sequence[float]) -> QColor:
@@ -72,56 +67,6 @@ def _source(kind: str, key: str, size: int) -> QImage:
     return scaled.convertToFormat(QImage.Format_ARGB32)
 
 
-def _grey(level: int, full: int) -> int:
-    return min(255, level * 255 // full)
-
-
-def _split(source: QImage) -> Tuple[QImage, QImage, Dict[int, Tuple[int, int]]]:
-    """Head and hair layers plus, per row, the leftmost and rightmost dark pixel."""
-    width, height, stride = source.width(), source.height(), source.bytesPerLine()
-    pixels = bytes(source.constBits())
-    head, hair = bytearray(len(pixels)), bytearray(len(pixels))
-    rows: Dict[int, Tuple[int, int]] = {}
-    for i in range(0, len(pixels), 4):
-        b, g, r, a = pixels[i:i + 4]
-        if a == 0:
-            continue
-        lightness = (max(r, g, b) + min(r, g, b)) // 2
-        is_hair = lightness >= HAIR_LIGHTNESS
-        target, full = (hair, _HAIR_FULL) if is_hair else (head, _HEAD_FULL)
-        grey = _grey(lightness, full)
-        target[i:i + 4] = bytes((grey, grey, grey, a))
-        if not is_hair and a > _ANCHOR_ALPHA:
-            x, y = (i // 4) % (stride // 4), (i // 4) // (stride // 4)
-            low, high = rows.get(y, (x, x))
-            rows[y] = (min(low, x), max(high, x))
-
-    def to_image(buf: bytearray) -> QImage:
-        # Copy into a Qt-owned image: constructing a QImage over a Python buffer leaves Qt with a
-        # pointer into memory Python may free, which corrupts the heap silently.
-        image = QImage(width, height, QImage.Format_ARGB32)
-        image.bits()[:len(buf)] = bytes(buf)
-        return image
-
-    return to_image(head), to_image(hair), rows
-
-
-def _anchor(rows: Dict[int, Tuple[int, int]], height: int) -> Tuple[int, int, int]:
-    """``(left, right, row)`` of the ear line: the widest dark row between a quarter of the
-    height and the shoulders, the lowest tied row winning; the shoulders' extents and bottom
-    row when that band holds no row (long hair over the ears, or a thumbnail without a head)."""
-    if not rows:
-        return 0, 0, 0
-    widest = max(high - low for low, high in rows.values())
-    shoulder_top = min(y for y, (low, high) in rows.items() if high - low >= _SHOULDER_FRACTION * widest)
-    band = [y for y in rows if height * _EAR_BAND_TOP <= y < shoulder_top - height * _EAR_BAND_GAP]
-    if band:
-        best = max(rows[y][1] - rows[y][0] for y in band)
-        row = max(y for y in band if rows[y][1] - rows[y][0] == best)
-        return rows[row][0], rows[row][1], row
-    return min(low for low, _ in rows.values()), max(high for _, high in rows.values()), max(rows)
-
-
 def split_layers(kind: str, key: str, size: int = PREVIEW_SIZE) -> Tuple[QPixmap, QPixmap]:
     """``(head, hair)`` grey layers for one style; both null when no art exists."""
     cache_key = (kind, key, size)
@@ -133,6 +78,8 @@ def split_layers(kind: str, key: str, size: int = PREVIEW_SIZE) -> Tuple[QPixmap
         layers = (QPixmap(), QPixmap())
     else:
         head, hair, rows = _split(source)
+        if kind == "beard":
+            hair = _without_crown(hair, source.height())
         layers = (QPixmap.fromImage(head), QPixmap.fromImage(hair))
         _ANCHORS[cache_key] = _anchor(rows, source.height())
     _LAYERS[cache_key] = layers
@@ -140,7 +87,11 @@ def split_layers(kind: str, key: str, size: int = PREVIEW_SIZE) -> Tuple[QPixmap
 
 
 def beard_transform(hair: str, beard: str, size: int = PREVIEW_SIZE) -> Tuple[float, float, float]:
-    """``(scale, dx, dy)`` that maps the beard image's ear line onto the hair image's ear line."""
+    """``(scale, dx, dy)`` that maps the beard image's shoulder line onto the hair image's shoulder line.
+
+    The hair's line is clamped to at most ``_SHOULDER_CLAMP`` of the height above its bottom row: long
+    hair widens the rows above the shoulders and would otherwise report a line far up the head.
+    """
     split_layers("hair", hair, size)
     split_layers("beard", beard, size)
     head_anchor = _ANCHORS.get(("hair", hair, size))
@@ -150,7 +101,8 @@ def beard_transform(hair: str, beard: str, size: int = PREVIEW_SIZE) -> Tuple[fl
     scale = (head_anchor[1] - head_anchor[0]) / (beard_anchor[1] - beard_anchor[0])
     if beard == BEARD_NONE:
         return 1.0, 0.0, 0.0
-    return scale, head_anchor[0] - beard_anchor[0] * scale, head_anchor[2] - beard_anchor[2] * scale
+    hair_top = max(head_anchor[2], head_anchor[3] - _SHOULDER_CLAMP * size)
+    return scale, head_anchor[0] - beard_anchor[0] * scale, hair_top - beard_anchor[2] * scale
 
 
 def _draw_centered(painter: QPainter, layer: QPixmap, color: QColor, size: int, peak: float = 1.0) -> None:
