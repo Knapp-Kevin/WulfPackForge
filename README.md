@@ -28,11 +28,17 @@ The two repositories are intentionally separate so runtime mods and external sav
 
 ## Current availability
 
-**No public Windows release has been published yet.** The Windows workflow builds and smoke-tests `WulfpackForge.exe` and `WulfpackForge-windows-x64.zip`; its temporary GitHub Actions artifacts are validation evidence, not durable public releases. Release-candidate tags (for example `v0.9.0-rc.1`) produce **draft pre-releases** that only the maintainer can see, so the release path is exercised before anything is published.
+**No public Windows release has been published yet.** The Windows workflow builds and smoke-tests `WulfpackForge.exe` and `WulfpackForge-windows-x64.zip`; its temporary GitHub Actions artifacts are validation evidence, not durable public releases. Release-candidate tags (any tag with a `-rc.N` suffix) produce **draft pre-releases** that only the maintainer can see, so the release path is exercised before anything is published. The steps that stand between the current candidate and publication are listed in [docs/release-validation-runbook.md](docs/release-validation-runbook.md).
 
 You can still use Wulfpack Forge now by running it from source. On Windows, the included launcher reduces setup and startup to one file after Python is installed. This is a source setup, not a packaged installer.
 
 The first public release remains gated on the Valheim 1.0 compatibility work in [issue #2](https://github.com/Knapp-Kevin/WulfPackForge/issues/2). When that gate passes, the packaged Windows build will provide the no-Python download-and-run experience described above.
+
+### Supported platforms
+
+**Windows** is the validated and packaged platform: every release gate, every real-save regression and every in-game check runs there, and it is the only platform with a packaged executable.
+
+**macOS and Linux** can run Wulfpack Forge from source through `run-wulfpack-forge.sh`, and the automated test suite runs on macOS in CI. They are unverified as player platforms: opening a character from the native save folders, the Valheim-running check against the platform's process name, Game Icons against a native install, and any signed or notarised package have not been exercised on real hardware. Treat them as developer platforms until that changes.
 
 ### Run now on Windows
 
@@ -90,7 +96,7 @@ The read-only **Record** tab gathers the history and knowledge stored with the c
 
 **New Character** on the main window writes a fresh `.fch` file into the Valheim characters folder you choose, using the exact defaults the game writes for a new character (starting torch and rag tunic, no skills yet, first-spawn intro pending). The file is verified before it is placed, an existing character with the same name is never overwritten, and the new character opens in the editor immediately. Use the Skills tab's **Add Skill** or **Add All Skills** to give it vanilla skills.
 
-Characters created by Wulfpack Forge have been loaded and played in Valheim 0.221.12 as part of the release evidence (2026-09-07), alongside edited existing characters; the created file layout is byte-for-byte the layout of a character created in-game on the same build. Vitals such as maximum health and stamina are recalculated by the game from active food, so they are starting points rather than fixed values.
+Characters created by Wulfpack Forge have been loaded and played in Valheim 0.221.12 as part of the release evidence (2026-09-07), alongside edited existing characters; the created file layout is byte-for-byte the layout of a character created in-game on the same build. In-game acceptance of edited 1.0 characters is the open step of the release gate and is recorded through the validation runbook once run. Vitals such as maximum health and stamina are recalculated by the game from active food, so they are starting points rather than fixed values.
 
 Known vanilla items use human-readable names and an appropriate original silhouette while retaining their prefab IDs. Unknown, modded, or newer-version items are preserved and receive a neutral fallback glyph rather than being rejected simply because the bundled catalog does not recognize them.
 
@@ -195,7 +201,7 @@ Backups are still worth keeping for characters you care about, especially around
 
 The bundled item catalog is generated from **Valheim 1.0.12** (Steam build 25253764) game data and contains more than 900 player-selectable vanilla items (1517 items in all, including every Deep North and gold-weapon addition; creature attacks and the NPC-held copies of player equipment are catalogued but not offered in the picker).
 
-Valheim 1.0 is scheduled for **September 9, 2026**. Wulfpack Forge will not claim post-1.0 compatibility merely because the application launches. The release gate tracked in [issue #2](https://github.com/Knapp-Kevin/WulfPackForge/issues/2) requires a deliberate catalog refresh plus real 1.0 character-save validation, including load, no-op round trip, appearance editing, inventory editing, backup behavior, atomic replacement, and in-game acceptance.
+Valheim 1.0 shipped on September 9, 2026, and Wulfpack Forge reads and writes its character files: the version 46 container and the version 33 player data round-trip byte-identically on real saves, the item catalog is generated from the 1.0.12 game data, and the cheat-state fields 1.0 added are preserved and shown rather than hidden. What the automated suite cannot prove is that the game itself accepts a file the editor wrote, so the release gate tracked in [issue #2](https://github.com/Knapp-Kevin/WulfPackForge/issues/2) keeps its in-game steps: load, no-op round trip, appearance edit, inventory edit with a 1.0 item, the workspace guard against a file the game rewrote, and the edits surviving a game restart. Those steps, with the exact commands and the evidence to record, are in [docs/release-validation-runbook.md](docs/release-validation-runbook.md).
 
 The current parser/serializer is write-validated for character-save versions **40 through 43** — real saves of each version round-trip byte-identical through the codec — and for container version **46** with player-data version **33**, the pair Valheim 1.0 writes. **The 1.0 evidence in CI is synthetic**: no real Valheim 1.0 save is committed to this repository, so the automated suite validates the 1.0 layouts against a fixture whose shape was derived from real saves, while a separate real-save regression (`tests/test_real_saves.py`) round-trips every 1.0 character found on the developer's machine byte-identically and skips, by name, where none exists. The inner player-data layout is checked separately and is validated for player-data versions 29 and 33. A structurally valid save using any other character-save version, or an unknown player-data layout, is shown as **Compatibility unverified** and remains read-only until it has its own evidence.
 
