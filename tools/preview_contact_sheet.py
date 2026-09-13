@@ -1,6 +1,6 @@
 """Render every hairstyle with one beard into a grid, one PNG per beard, for a person to look at.
 
-The head preview maps each beard onto each hair by their ear lines; whether the result looks right
+The head preview maps each beard onto each hair by their shoulder lines; whether the result looks right
 is a judgement only eyes can make, and 38 hairs times 26 beards is too many to click through. This
 tool writes one contact sheet per beard so all 988 pairs fit in 26 images. It reads the bundled
 thumbnails only and writes nothing outside the folder it is given.

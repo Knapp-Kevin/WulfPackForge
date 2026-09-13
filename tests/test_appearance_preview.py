@@ -10,9 +10,11 @@ from PySide6.QtWidgets import QApplication
 
 from subscripts.playerDataUtil import unpack_player_data_hex
 from tests.fixture_saves import realistic_player_hex
-from ui.appearancePreview import (
-    _ANCHORS, ColorSwatch, _anchor, beard_transform, compose_preview, display_color, split_layers,
-)
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QImage
+
+from ui.appearancePreview import _ANCHORS, ColorSwatch, beard_transform, compose_preview, display_color, split_layers
+from ui.previewLayers import _anchor, _light_runs, _without_crown
 from ui.appearanceTab import AppearanceTab
 
 
@@ -48,34 +50,52 @@ class AppearancePreviewTests(QtTestCase):
         self.assertLess(_distance(image.pixelColor(*blue), HAIR), _distance(image.pixelColor(*blue), SKIN))
         self.assertLess(_distance(image.pixelColor(*skin), SKIN), _distance(image.pixelColor(*skin), HAIR))
 
-    def test_real_thumbnails_anchor_on_the_ear_line_or_fall_back_to_the_shoulders(self):
-        for kind, key in (("hair", "Hair7"), ("beard", "Beard3"), ("hair", "Hair38")):
+    def test_real_thumbnails_anchor_on_the_shoulder_line(self):
+        for kind, key in (("hair", "Hair7"), ("hair", "Hair29"), ("beard", "Beard3"), ("beard", "Beard20")):
             split_layers(kind, key, 256)
-        # (anchor, the image's lowest dark row measured in the phase 45 research)
-        for anchor, bottom in ((_ANCHORS[("hair", "Hair7", 256)], 226), (_ANCHORS[("beard", "Beard3", 256)], 222)):
-            left, right, row = anchor
-            self.assertTrue(90 <= row <= 150, anchor)
-            self.assertGreaterEqual(bottom - row, 60, anchor)
-            self.assertTrue(100 <= right - left <= 115, anchor)  # ear to ear, not the 180-plus shoulders
-        left, right, row = _ANCHORS[("hair", "Hair38", 256)]
-        self.assertEqual(row, 255)  # no ear band: the shoulders' bottom row and full width
-        self.assertGreater(right - left, 179)
+        # (kind, key, shoulder line, lowest dark row) measured in the phase 47 research
+        for kind, key, top, bottom in (("hair", "Hair7", 201, 226), ("hair", "Hair29", 208, 233),
+                                       ("beard", "Beard3", 193, 222), ("beard", "Beard20", 188, 236)):
+            left, right, line, low = _ANCHORS[(kind, key, 256)]
+            self.assertEqual((line, low), (top, bottom), (kind, key))
+            self.assertGreaterEqual(low - line, 20, (kind, key))
+            self.assertTrue(175 <= right - left <= 215, (kind, key, right - left))
         scale, dx, dy = beard_transform("Hair7", "Beard3", 256)
-        self.assertTrue(0.8 < scale < 1.2, scale)
+        self.assertTrue(0.85 < scale < 1.0, scale)
+        self.assertAlmostEqual(dy, 201 - 193 * scale, delta=0.5)
         pixmap = compose_preview("Hair7", "Beard3", SKIN, HAIR, 0, 256)
         self.assertEqual((pixmap.width(), pixmap.height()), (256, 256))
         self.assertEqual(beard_transform("Hair7", "BeardNone", 256)[0], 1.0)
 
-    def test_a_thumbnail_without_an_ear_band_anchors_on_the_shoulders(self):
-        trapezoid = {y: (20 - y // 32, 220 + y // 32) for y in range(256)}  # already 92 percent wide at the top
-        self.assertEqual(_anchor(trapezoid, 256), (13, 227, 255))
+    def test_a_hair_whose_outline_hides_the_shoulders_is_clamped(self):
+        split_layers("hair", "Hair6", 256)
+        split_layers("beard", "Beard3", 256)
+        self.assertEqual(_ANCHORS[("hair", "Hair6", 256)][2:], (175, 237))
+        scale, dx, dy = beard_transform("Hair6", "Beard3", 256)
+        self.assertAlmostEqual(dy, 198.6 - 193 * scale, delta=0.01)  # 237 - 0.15 * 256, unrounded
         bust = {y: (78, 178) for y in range(200)}
         bust.update({y: (28, 228) for y in range(200, 256)})
-        bulge = {**bust, **{y: (68, 188) for y in range(100, 111)}}
-        self.assertEqual(_anchor(bulge, 256), (68, 188, 110))
-        tied = {**bust, 100: (68, 188), 140: (68, 188)}
-        self.assertEqual(_anchor(tied, 256), (68, 188, 140))
-        self.assertEqual(_anchor({}, 256), (0, 0, 0))
+        self.assertEqual(_anchor(bust, 256), (28, 228, 200, 255))
+        growing = {y: (20 - y // 32, 220 + y // 32) for y in range(256)}  # 92 percent wide at the top
+        self.assertEqual(_anchor(growing, 256)[2], 0)
+        self.assertEqual(_anchor({}, 256), (0, 0, 0, 0))
+
+    def test_the_crown_highlight_is_masked_out_of_the_beard_layer(self):
+        layer = split_layers("beard", "Beard3", 256)[1].toImage()
+        crown = [y for y in range(45, 109) for x in range(256) if layer.pixelColor(x, y).alpha() > 0]
+        self.assertEqual(crown, [])
+        body = any(layer.pixelColor(x, y).alpha() > 0 for y in range(114, 181) for x in range(256))
+        self.assertTrue(body)
+        synthetic = QImage(64, 256, QImage.Format_ARGB32)
+        synthetic.fill(Qt.transparent)
+        for y in list(range(40, 61)) + list(range(120, 151)):
+            synthetic.setPixelColor(10, y, QColor(200, 200, 200))
+        synthetic.setPixelColor(10, 90, QColor(200, 200, 200, 100))  # below the alpha threshold: not a light row
+        self.assertEqual(_light_runs(synthetic), [(40, 60), (120, 150)])
+        masked = _without_crown(synthetic, 256)
+        self.assertEqual(_light_runs(masked), [(120, 150)])
+        whole = split_layers("beard", "Beard11", 256)[1].toImage()
+        self.assertTrue(any(whole.pixelColor(x, 44).alpha() > 0 for x in range(256)))
 
     def test_overbright_skin_keeps_its_hue(self):
         color, peak = display_color([2.0, 1.0, 0.5])
