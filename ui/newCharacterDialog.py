@@ -20,7 +20,9 @@ from PySide6.QtWidgets import (
 
 from data.appearance import BEARD_NONE, HAIR_NONE, VALHEIM_BEARDS, VALHEIM_HAIRS
 from subscripts.characterDiscovery import candidate_character_directories
+from data.skinPalette import palette_tints
 from subscripts.newCharacter import DEFAULT_HAIR_COLOR, DEFAULT_SKIN, NewCharacterSpec, validate_name
+from ui.skinPaletteDialog import SkinPaletteDialog
 from ui.appearancePreview import AppearancePreview
 from ui.glyphs import populate_appearance_combo
 
@@ -32,10 +34,11 @@ def _to_qcolor(rgb) -> QColor:
 
 
 class NewCharacterDialog(QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, vanilla: bool = False):
         super().__init__(parent)
         self.setWindowTitle("New Character")
-        self.skin_color = list(DEFAULT_SKIN)
+        self.vanilla = vanilla  # the vanilla-friendly appearance mode: palette skin, capitalised name
+        self.skin_color = list(palette_tints()[4]) if vanilla else list(DEFAULT_SKIN)
         self.hair_color = list(DEFAULT_HAIR_COLOR)
 
         outer = QHBoxLayout(self)
@@ -119,7 +122,14 @@ class NewCharacterDialog(QDialog):
         widget.setPalette(palette)
 
     def _pick_skin(self, _checked=False):
-        self._pick(self.skin_color, self.skin_preview, "Select Skin Color")
+        if not self.vanilla:
+            self._pick(self.skin_color, self.skin_preview, "Select Skin Color")
+            return
+        chosen = SkinPaletteDialog.pick(self, self.skin_color)
+        if chosen is not None:
+            self.skin_color[:] = chosen
+            self._paint(self.skin_preview, self.skin_color)
+            self.refresh_preview()
 
     def _pick_hair(self, _checked=False):
         self._pick(self.hair_color, self.hair_preview, "Select Hair Color")
@@ -149,7 +159,7 @@ class NewCharacterDialog(QDialog):
             self._validate(self.name_input.text())
 
     def _validate(self, text: str):
-        error = validate_name(text.strip())
+        error = validate_name(text.strip(), capitalised_words=self.vanilla)
         folder = self.folder_combo.currentData()
         if error is None and folder and (Path(folder) / f"{text.strip().lower()}.fch").exists():
             error = "A character with that name already exists in the chosen folder."

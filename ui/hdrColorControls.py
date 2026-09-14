@@ -48,6 +48,7 @@ class HdrColorControls(QGroupBox):
     def __init__(self, parent=None):
         super().__init__("Advanced HDR / Overbright Colors", parent)
         self.syncing = False
+        self.vanilla = False  # the vanilla-friendly appearance mode: the whole group hidden, skin spins off
         layout = QVBoxLayout(self)
         self.overbright_checkbox = QCheckBox("Allow overbright values above 1.0")
         self.overbright_checkbox.setToolTip(
@@ -122,10 +123,18 @@ class HdrColorControls(QGroupBox):
 
     def set_overbright(self, enabled: bool):
         self.controls.setVisible(enabled)
-        for spin in self.skin_spins + self.hair_spins:
+        for spin in self.hair_spins:
             spin.setEnabled(enabled)
+        for spin in self.skin_spins:
+            spin.setEnabled(enabled and not self.vanilla)  # skin comes from the palette in the mode
         for factor, button in self.preset_buttons.items():
             button.setEnabled(enabled or factor == 1.0)  # Normal always returns a loaded HDR character to safety
+
+    def set_vanilla_mode(self, vanilla: bool):
+        """Hide the whole group in the mode and keep the skin spins off; no value is changed by a toggle."""
+        self.vanilla = vanilla
+        self.setVisible(not vanilla)
+        self.set_overbright(self.overbright_checkbox.isChecked())
 
     def sync(self, skin_rgb, hair_rgb):
         self.syncing = True

@@ -1,5 +1,6 @@
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QGroupBox, QFormLayout, QLineEdit
 
+from subscripts.newCharacter import validate_name
 from ui.fieldTracker import FieldTracker
 
 
@@ -11,6 +12,7 @@ class MiscTab(QWidget):
         self.player_data = None
         self.root_save = None
         self.tracker = FieldTracker()
+        self.vanilla = False  # the vanilla-friendly appearance mode: an edited name follows the capitalisation rule
 
         main_layout = QVBoxLayout(self)
 
@@ -35,6 +37,16 @@ class MiscTab(QWidget):
             name = self.root_save["character_name"]
         self.name_input.setText(name)
         self.tracker.remember("character_name", self.name_input.text())
+
+    def set_vanilla_mode(self, vanilla: bool) -> None:
+        self.vanilla = vanilla
+
+    def name_error(self):
+        """The rule's message for an edited name, or None; a name the player has not touched is never checked."""
+        text = self.name_input.text()
+        if not self.tracker.changed("character_name", text):
+            return None
+        return validate_name(text.strip(), capitalised_words=self.vanilla)
 
     def save_changes(self):
         """Write the name to the outer container only when it was edited and is not blank."""

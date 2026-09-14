@@ -27,7 +27,13 @@ from ui.hdrColorControls import (
 )
 
 COMBO_ICON = QSize(72, 72)
-__all__ = ["AppearanceTab", "EXTREME_HDR_THRESHOLD", "MAX_HDR_COMPONENT"]
+__all__ = ["AppearanceTab", "EXTREME_HDR_THRESHOLD", "MAX_HDR_COMPONENT", "default_skin_picker"]
+
+
+def default_skin_picker(parent, current_rgb):
+    """The full editor's skin picker: any colour from the system dialog, or None when cancelled."""
+    color = QColorDialog.getColor(_to_qcolor(current_rgb), parent, "Select Skin Color")
+    return _picked(color) if color.isValid() else None
 
 
 class AppearanceTab(QWidget):
@@ -41,6 +47,7 @@ class AppearanceTab(QWidget):
         self.current_hair_rgb = [1.0, 1.0, 1.0]
         self._sdr_skin = [1.0, 1.0, 1.0]
         self._sdr_hair = [1.0, 1.0, 1.0]
+        self.skin_picker = default_skin_picker  # (parent, current_rgb) -> rgb or None; the mode swaps it
 
         outer = QHBoxLayout(self)
         main_layout = QVBoxLayout()
@@ -212,9 +219,9 @@ class AppearanceTab(QWidget):
         widget.set_color(rgb_list)
 
     def choose_skin_color(self):
-        color = QColorDialog.getColor(_to_qcolor(self.current_skin_rgb), self, "Select Skin Color")
-        if color.isValid():
-            self.current_skin_rgb = _picked(color)
+        picked = self.skin_picker(self, self.current_skin_rgb)
+        if picked is not None:
+            self.current_skin_rgb = list(picked)
             self._sdr_skin = list(self.current_skin_rgb)
             self._sync_hdr_spins()
             self._refresh_color_ui()

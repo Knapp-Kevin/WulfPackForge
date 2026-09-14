@@ -28,6 +28,7 @@ class SkillsTab(QWidget):
         super().__init__()
         self.player_data = None
         self.tracker = FieldTracker()
+        self.read_only = False  # the vanilla-friendly appearance mode: the table and its buttons are disabled
 
         layout = QVBoxLayout(self)
         layout.addLayout(self._build_toolbar())
@@ -92,6 +93,17 @@ class SkillsTab(QWidget):
         for index, skill in enumerate(player_data.get("skills", [])):
             self.add_skill_row(index, skill)
         self._refresh_addable_skills()
+        self.set_read_only(self.read_only)
+
+    def set_read_only(self, read_only: bool) -> None:
+        """Disable the table and the editing buttons; the tracker then sees no change to write."""
+        self.read_only = read_only
+        self.table.setEnabled(not read_only)
+        self.btn_max_all.setEnabled(not read_only)
+        self.btn_set_all0.setEnabled(not read_only)
+        addable = not read_only and self.add_skill_combo.count() > 0
+        self.btn_add_skill.setEnabled(addable)
+        self.btn_add_all_skills.setEnabled(addable)
 
     def _refresh_addable_skills(self):
         """Offer every vanilla skill the character does not have yet."""

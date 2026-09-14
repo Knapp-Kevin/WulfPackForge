@@ -42,12 +42,21 @@ class NewCharacterSpec:
 logger = logging.getLogger(__name__)
 
 
-def validate_name(name: str) -> Optional[str]:
-    """Return an error message, or None when the name is acceptable."""
+CAPITALISED_WORDS_MESSAGE = ("In vanilla-friendly mode every word of the name starts with a capital letter "
+                             "(Frostwulf, Frost Wulf).")
+
+
+def validate_name(name: str, capitalised_words: bool = False) -> Optional[str]:
+    """Return an error message, or None when the name is acceptable.
+
+    ``capitalised_words`` adds the Jotunheim rule of the vanilla-friendly appearance mode.
+    """
     if not NAME_PATTERN.match(name or ""):
         return "Use 3 to 15 letters or digits, with single spaces between words."
     if name.lower() in _RESERVED:
         return "That name is reserved by Windows and cannot be a file name."
+    if capitalised_words and not all(word[0].isupper() for word in name.split()):
+        return CAPITALISED_WORDS_MESSAGE
     return None
 
 
