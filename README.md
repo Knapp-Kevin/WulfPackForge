@@ -92,6 +92,12 @@ The read-only **Record** tab gathers the history and knowledge stored with the c
 | Character records | Every copy of a character (the active save, Valheim's `.old` and backup files, Wulfpack Forge snapshots and backups) is grouped under one record by the identity inside the save; **States…** lists them and can open one or restore it as the active save through the normal verified Save Changes path |
 | New characters | Create a brand-new character (name, model, hair, beard, colours) with the game's starting defaults, then edit it like any other |
 
+### Vanilla-friendly appearance mode
+
+Some vanilla servers, Jotunheim among them, allow appearance edits and nothing else. The large **Vanilla-friendly appearance mode** on/off switch under the action row (grey when off, green when on) switches Wulfpack Forge to exactly that: skin is chosen from a palette of ten realistic tones with a small lightness nudge, hair and beard colours stay at or below 1.1 (the game's own maximum is 1.0, so 1.1 reads as normal), the Advanced HDR / Overbright group is hidden, the Inventory and Skills tabs become read-only, and a renamed character needs each word of the name capitalised. A save that breaks one of these rules is refused with one sentence saying what to change. The choice is remembered on your computer.
+
+The mode is a courtesy for players of vanilla servers, not enforcement: anyone can switch it off and use the full editor, and the character file carries no trace of which mode wrote it. Skin tones follow the Monk Skin Tone scale, Google, 2023, CC BY 4.0; the palette uses the scale's hues at the game's own lightness range rather than its published colours.
+
 ### Creating a character
 
 **New Character** on the main window writes a fresh `.fch` file into the Valheim characters folder you choose, using the exact defaults the game writes for a new character (starting torch and rag tunic, no skills yet, first-spawn intro pending). The file is verified before it is placed, an existing character with the same name is never overwritten, and the new character opens in the editor immediately. Use the Skills tab's **Add Skill** or **Add All Skills** to give it vanilla skills.

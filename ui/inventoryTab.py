@@ -60,6 +60,7 @@ class InventoryTab(QWidget):
         self.main_layout.addLayout(footer)
         
         self.slots = {}
+        self.read_only = False  # the vanilla-friendly appearance mode: slots take no click, menu, drag or drop
         self.init_empty_grid()
 
     def init_empty_grid(self):
@@ -80,9 +81,15 @@ class InventoryTab(QWidget):
                 slot.setContextMenuPolicy(Qt.CustomContextMenu)
                 slot.customContextMenuRequested.connect(self._slot_menu_requested)
                 slot.clicked.connect(self._slot_clicked)
-                
+                slot.setEnabled(not self.read_only)
                 self.grid_layout.addWidget(slot, y, x)
                 self.slots[(x, y)] = slot
+
+    def set_read_only(self, read_only: bool) -> None:
+        """Disable every slot so no edit can reach the item dictionaries; the save path is untouched."""
+        self.read_only = read_only
+        for slot in self.slots.values():
+            slot.setEnabled(not read_only)
 
     def open_game_icons(self):
         with modal(IconExtractionDialog(self)) as dialog:

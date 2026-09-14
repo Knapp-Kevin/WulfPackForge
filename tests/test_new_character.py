@@ -114,6 +114,12 @@ class NameValidationTests(unittest.TestCase):
         self.assertIsNone(validate_name("Frostwulf"))
         self.assertIsNone(validate_name("Sigrun the Bold"))
 
+    def test_vanilla_rule_requires_capitalised_words(self):
+        self.assertIn("capital", validate_name("frost wulf", capitalised_words=True))
+        self.assertIn("capital", validate_name("Frost wulf", capitalised_words=True))
+        self.assertIsNone(validate_name("Frost Wulf", capitalised_words=True))
+        self.assertIsNone(validate_name("frost wulf"))
+
     def test_rejects_short_long_reserved_and_symbols(self):
         for bad in ("ab", "Sixteencharacters", "Con", "Bad*Name", "", " Lead", "double  space"):
             self.assertIsNotNone(validate_name(bad), bad)

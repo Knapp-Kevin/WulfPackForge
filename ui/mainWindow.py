@@ -11,6 +11,8 @@ from ui.miscTab import MiscTab
 from ui.recordTab import RecordTab
 from ui.saveStatusWidget import SaveStatusWidget
 from subscripts.valheim_detection import ScanState, ValheimScan, scan_valheim, valheim_warning_message
+from ui.editorModeBar import EditorModeBar
+from ui.saveGuards import block_for_valheim
 from ui.lifetime import modal
 from ui.branding import APP_WINDOW_TITLE
 from ui.brandBanner import BANNER_MAX_HEIGHT, BANNER_MIN_HEIGHT, BrandBanner, banner_height_for
@@ -54,6 +56,8 @@ class MainWindow(QMainWindow):
         self.picker = CharacterPickerBar(discover=lambda: discover_character_records())
         layout.addWidget(self.picker)
         layout.addLayout(self._build_action_row())
+        self.mode_bar = EditorModeBar()
+        layout.addWidget(self.mode_bar)
         self.file_label = QLabel()
         self.file_label.setWordWrap(True)
         layout.addWidget(self.file_label)
@@ -61,6 +65,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.save_status)
         layout.addWidget(self._build_tabs())
         self._set_loaded(False)
+        self.mode_bar.apply(self)
 
         self.picker.open_requested.connect(self.load_save_file)
         self.picker.restore_requested.connect(self.load_save_file)  # (state path, head path)
@@ -68,7 +73,7 @@ class MainWindow(QMainWindow):
         self.refresh_discovered_characters()
 
     def _warn_if_valheim_running(self):
-        scan = scan_valheim()
+        scan: ValheimScan = scan_valheim()
         if scan.state != ScanState.RUNNING:
             return
         with modal(QMessageBox(QMessageBox.Warning, "Valheim Running", valheim_warning_message(scan), QMessageBox.Ok, self)) as msg:
@@ -121,7 +126,7 @@ class MainWindow(QMainWindow):
         return report
 
     def create_new_character(self):
-        with modal(NewCharacterDialog(self)) as dialog:
+        with modal(NewCharacterDialog(self, vanilla=self.mode_bar.vanilla)) as dialog:
             spec = dialog.result_spec() if dialog.exec() == QDialog.Accepted else None
         if spec is None:
             return
@@ -172,6 +177,7 @@ class MainWindow(QMainWindow):
         self._set_health(valid=True, version=self.root_save.get("version"), source=source, modified_at=modified_at)
         self.tabs.setCurrentWidget(self.appearance_tab)
         self.refresh_discovered_characters()
+        self.mode_bar.apply(self)
 
     def _reject_load(self, source, modified_at, exc):
         self.__dict__.update(_EMPTY_STATE)
@@ -179,17 +185,6 @@ class MainWindow(QMainWindow):
         self._set_loaded(False)
         self._set_health(valid=False, version=None, source=source, modified_at=modified_at, error=str(exc))
         QMessageBox.critical(self, "Character Could Not Be Opened", messages.could_not_open(exc))
-
-    def _block_for_valheim(self, scan: ValheimScan, working_path=None) -> bool:
-        if scan.state == ScanState.NOT_RUNNING or (working_path is None and scan.state != ScanState.RUNNING):
-            return False
-        if working_path is None:
-            QMessageBox.critical(self, "Close Valheim Before Saving",
-                                 messages.close_valheim_before_saving(valheim_warning_message(scan)))
-        else:
-            QMessageBox.warning(self, "Changes kept in your Wulfpack Forge working copy",
-                                messages.kept_in_working_copy(valheim_warning_message(scan), working_path))
-        return True
 
     def _mark_external_change(self, message):
         self.current_modified_at = mtime_or_none(self.current_fch)
@@ -200,7 +195,10 @@ class MainWindow(QMainWindow):
         if not self.root_save or not self.player_data or not self.workspace_session or not self.current_fch:
             QMessageBox.warning(self, "No Character Loaded", "Open a character before saving changes.")
             return
-        if self._block_for_valheim(scan_valheim()):
+        if reason := self.mode_bar.blocking_reason(self):
+            QMessageBox.warning(self, "Vanilla-friendly appearance mode", reason)
+            return
+        if block_for_valheim(self, scan_valheim(), message_box=QMessageBox):
             return
         session = self.workspace_session
         temp_paths = [os.path.join(session.workspace_dir, "working", ".candidate.fch.tmp")]
@@ -229,7 +227,7 @@ class MainWindow(QMainWindow):
         write_fch_bytes(serialize_save(self.root_save), candidate_path)
         verify_fch_round_trip(candidate_path, expected_root=self.root_save)
         store_verified_working_copy(candidate_path, session, expected_root=self.root_save)
-        if self._block_for_valheim(scan_valheim(), session.working_path):
+        if block_for_valheim(self, scan_valheim(), session.working_path, message_box=QMessageBox):
             return
         staged_path = stage_candidate(session.working_path, self.current_fch)
         temp_paths.append(staged_path)
