@@ -71,11 +71,11 @@ class AchievementCosmeticIsolationTests(unittest.TestCase):
         self.assertEqual(self._save_and_fields(), ["payload.beard"])
 
     def test_cosmetic_save_preserves_all_cheat_evidence(self):
-        before_root = realistic_root_save()
+        before_flag = self.window.root_save["used_cheats"]
         before_flags = [item["_wire"]["cheat_flags"] for item in self.window.player_data["inventory"]]
         self.window.appearance_tab.current_hair_rgb = [0.31, 0.52, 0.73]
         self.window.save_save_file()
-        self.assertEqual(self.window.save_data["used_cheats"], before_root["used_cheats"])
+        self.assertEqual(self.window.root_save["used_cheats"], before_flag)
         after_flags = [item["_wire"]["cheat_flags"] for item in self.window.player_data["inventory"]]
         self.assertEqual(after_flags, before_flags)
         self.assertEqual(_fields(compare(str(self.before), str(self.source))), ["payload.hair_color"])
