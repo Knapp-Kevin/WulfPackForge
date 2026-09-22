@@ -1,4 +1,4 @@
-"""The cheat-flag policy (META_LEDGER #175): preserve verbatim, never set, surface the risk."""
+"""The achievement-state policy: preserve evidence, never set it, never claim eligibility."""
 import copy
 import unittest
 
@@ -41,7 +41,7 @@ class CheatPolicyTests(unittest.TestCase):
         other_bit["inventory"][0]["_wire"]["cheat_flags"] = 2
         self.assertEqual(from_character({}, other_bit).cheated_items, 0)
 
-    def test_the_bypass_key_is_detected_case_insensitively_and_never_written(self):
+    def test_the_override_marker_is_detected_and_never_written(self):
         data = clean_v33_payload()
         data["uniques"] = ["invrows 4", "BypassCheatChecks 1"]
         before = copy.deepcopy(data["uniques"])
@@ -51,10 +51,12 @@ class CheatPolicyTests(unittest.TestCase):
         self.assertFalse(from_character({}, {"uniques": ["bypasscheatchecks 0"]}).bypass_active)
         self.assertFalse(from_character({}, {"uniques": []}).bypass_active)
 
-    def test_risk_lines_never_claim_the_character_is_safe(self):
+    def test_risk_lines_never_claim_the_character_is_achievement_safe(self):
         lines = risk_lines(CheatRisk(profile_flag=False, cheated_items=0, bypass_active=False))
-        self.assertEqual(len(lines), 4)
-        self.assertIn("world cheat state", lines[-1])
+        self.assertEqual(len(lines), 6)
+        self.assertTrue(any("world cheat state" in line for line in lines))
+        self.assertTrue(any("1.0.15" in line for line in lines))
+        self.assertTrue(any("cannot prove" in line for line in lines))
         self.assertFalse(any("safe" in line.lower() for line in lines))
         self.assertIn("2", risk_lines(CheatRisk(profile_flag=True, cheated_items=2, bypass_active=True))[1])
 
