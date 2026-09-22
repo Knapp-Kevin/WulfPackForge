@@ -14,7 +14,7 @@ LIST_SECTIONS = (
     ("materials", "Known materials"),
     ("uniques", "Unique items"),
     ("foods", "Active food"),
-    ("cheat_risk", "Achievement risk"),
+    ("cheat_risk", "Achievement eligibility evidence"),
 )
 SCALAR_FIELDS = (
     ("created", "Created"),
