@@ -101,6 +101,22 @@ def realistic_v33_player_hex() -> str:
     return pack_player_data_hex(realistic_v33_player_data())
 
 
+def realistic_v34_player_data() -> dict:
+    """The version-33 fixture as Valheim 1.0.20 writes it: v34 payload, v110 items, RNG state.
+
+    No real save carries item upgrade seeds yet, so both dictionaries are non-empty here.
+    """
+    data = realistic_v33_player_data()
+    data["version"], data["inventory_version"] = 34, 110
+    data["pseudo_counter"] = [[-640346531, 23], [1438359097, 3]]
+    data["item_upgrade_seeds"] = [[17, -5], [0, 2147483647]]
+    return data
+
+
+def realistic_v34_player_hex() -> str:
+    return pack_player_data_hex(realistic_v34_player_data())
+
+
 def realistic_root_save(player_hex: str | None = None, name: str = "Frostwülf") -> dict:
     return {
         "version": 43,
@@ -163,4 +179,11 @@ def realistic_v46_root_save(player_hex: str | None = None, name: str = "Frostwü
     base["version"] = 46
     base["stat_length"] = 3
     base["stat_records"] = [_stat_record(index == 0) for index in range(10)]
+    return base
+
+
+def realistic_v47_root_save(player_hex: str | None = None, name: str = "Frostw\u00fclf") -> dict:
+    """A Valheim 1.0.20 container: the 1.0 layout at version 47, with a v34 payload by default."""
+    base = realistic_v46_root_save(player_hex=realistic_v34_player_hex() if player_hex is None else player_hex, name=name)
+    base["version"] = 47
     return base

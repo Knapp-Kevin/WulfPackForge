@@ -3,6 +3,20 @@ from PySide6.QtWidgets import QMessageBox
 
 from subscripts.valheim_detection import ScanState, ValheimScan, valheim_warning_message
 from ui import messages
+from ui.lifetime import modal
+
+
+def warn_if_valheim_running(parent, scan: ValheimScan, message_box=None) -> None:
+    """The startup warning, shown only when Valheim is certainly running.
+
+    ``message_box`` is the caller's ``QMessageBox`` name, as for ``block_for_valheim``.
+    """
+    box = message_box or QMessageBox
+    if scan.state != ScanState.RUNNING:
+        return
+    with modal(box(box.Warning, "Valheim Running", valheim_warning_message(scan), box.Ok, parent)) as msg:
+        msg.setInformativeText(messages.STARTUP_RUNNING_INFO)
+        msg.exec()
 
 
 def block_for_valheim(parent, scan: ValheimScan, working_path=None, message_box=None) -> bool:

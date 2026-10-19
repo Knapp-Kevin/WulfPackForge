@@ -16,6 +16,7 @@ from subscripts.workspace import (
     BACKUP_RETENTION, SNAPSHOT_RETENTION, WorkspaceError, create_workspace_session, prune_workspace,
 )
 from tests.fixture_saves import realistic_root_save, write_fch
+from subscripts.valheim_detection import ScanState, ValheimScan
 from tests.qt_support import dispose
 
 
@@ -116,7 +117,7 @@ class TypedRoutingTests(unittest.TestCase):
         self.save_dir = root / "characters_local"; self.save_dir.mkdir()
         self.source = write_fch(self.save_dir / "hero.fch", realistic_root_save(name="Hero"))
         self.stack = ExitStack()
-        self.stack.enter_context(patch.object(mw, "scan_valheim", side_effect=lambda: mw.ValheimScan(state=mw.ScanState.NOT_RUNNING)))
+        self.stack.enter_context(patch.object(mw, "scan_valheim", side_effect=lambda: ValheimScan(state=ScanState.NOT_RUNNING)))
         self.stack.enter_context(patch.object(mw, "discover_character_records", return_value=[]))
         self.stack.enter_context(patch.object(mw, "QMessageBox", RecordingMessageBox))
         self.stack.enter_context(patch("subscripts.workspace.default_workspace_root", return_value=root / "workspace"))

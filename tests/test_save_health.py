@@ -28,12 +28,13 @@ class SaveHealthTests(unittest.TestCase):
         self.assertIn("checksum and structure verified", report.detail.lower())
         self.assertIn("protected workspace snapshot", report.detail.lower())
 
-    def test_versions_40_to_43_and_46_are_writable_and_others_are_not(self):
-        self.assertEqual(SUPPORTED_CHARACTER_SAVE_VERSIONS, frozenset({40, 41, 42, 43, 46}))
+    def test_versions_40_to_43_46_and_47_are_writable_and_others_are_not(self):
+        self.assertEqual(SUPPORTED_CHARACTER_SAVE_VERSIONS, frozenset({40, 41, 42, 43, 46, 47}))
 
-        v46 = build_save_health_report(valid=True, version=46, source="Local", modified_at=None)
-        self.assertEqual(v46.state, SAVE_STATE_VERIFIED)
-        self.assertTrue(v46.writable)
+        for version in (46, 47):
+            report = build_save_health_report(valid=True, version=version, source="Local", modified_at=None)
+            self.assertEqual(report.state, SAVE_STATE_VERIFIED, version)
+            self.assertTrue(report.writable, version)
 
         writable = build_save_health_report(valid=True, version=41, source="Local", modified_at=None)
         self.assertEqual(writable.state, SAVE_STATE_VERIFIED)
@@ -121,6 +122,26 @@ class SaveHealthTests(unittest.TestCase):
 
         self.assertEqual(report.backup_label, "Frostwulf.fch.20260906T003000Z.bak")
         self.assertIn("2023-11", report.modified_label)
+
+
+class UpgradeReportTests(unittest.TestCase):
+    def test_an_upgrade_reports_the_files_version_and_the_format_it_saves_as(self):
+        upgrade = {"from_container": 43, "from_payload": [29, 106, 2], "cleared_cheat_flags": 0}
+        report = build_save_health_report(valid=True, version=47, source="Local", modified_at=None, upgrade=upgrade)
+        self.assertEqual(report.save_version, 43)
+        self.assertTrue(report.writable)
+        self.assertIn("the format Valheim 1.0.20 writes (save version 47)", report.detail)
+
+    def test_a_failed_load_ignores_an_upgrade_left_from_another_character(self):
+        stale = {"from_container": 43, "from_payload": [29, 106, 2], "cleared_cheat_flags": 0}
+        report = build_save_health_report(valid=False, version=47, source="Local", modified_at=None, upgrade=stale)
+        self.assertEqual(report.save_version, 47)
+        self.assertNotIn("1.0.20", report.detail)
+
+    def test_no_upgrade_means_no_upgrade_sentence(self):
+        report = build_save_health_report(valid=True, version=47, source="Local", modified_at=None)
+        self.assertEqual(report.save_version, 47)
+        self.assertNotIn("1.0.20", report.detail)
 
 
 if __name__ == "__main__":

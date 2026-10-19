@@ -2,6 +2,7 @@
 """Compare two Valheim character files field by field, through the editor's own codec.
 
     python tools/compare_saves.py before.fch after.fch
+    python tools/compare_saves.py --upgrade before.fch after.fch
 
 Read-only: both files are read into memory and parsed with the same reader the editor
 uses; nothing is written. The output names every field that differs, with the old and
@@ -9,6 +10,10 @@ new value, so "the game accepted the edited save" becomes a recorded list of wha
 game changed rather than an impression. The inventory is keyed by grid slot; other
 lists of records compare by index; map data has no decoder and is compared as opaque
 bytes. The last line is the difference count. Exit status is always 0.
+
+``--upgrade`` applies the editor's save upgrade to the first file in memory before
+comparing, so a character saved by an older Valheim can be compared with the file Valheim
+itself wrote when it migrated the same character.
 """
 from __future__ import annotations
 
@@ -21,14 +26,18 @@ sys.path.insert(0, str(ROOT))
 
 from subscripts.fchUtil import parse_save  # noqa: E402
 from subscripts.playerDataUtil import unpack_player_data_hex  # noqa: E402
+from subscripts.saveUpgrade import upgrade_save  # noqa: E402
 
 OPAQUE = "map_data_hex"
 
 
-def load(path: str) -> Tuple[dict, dict]:
-    """The container and the decoded payload of one file; the file is only read."""
+def load(path: str, upgrade: bool = False) -> Tuple[dict, dict]:
+    """The container and the decoded payload of one file, save-upgraded when asked; the file is only read."""
     root = parse_save(Path(path).read_bytes())
     payload = unpack_player_data_hex(root.get("player_data_hex") or "")
+    if upgrade:
+        root, payload = upgrade_save(root, payload)
+        payload.pop("_upgrade", None)
     return root, payload
 
 
@@ -111,9 +120,9 @@ def diff_inventory(before: list, after: list) -> List[str]:
     return lines
 
 
-def compare(before_path: str, after_path: str) -> List[str]:
-    """Every field that differs between the two files, as one line each."""
-    root_a, payload_a = load(before_path)
+def compare(before_path: str, after_path: str, upgrade: bool = False) -> List[str]:
+    """Every field that differs between the two files, as one line each; ``upgrade`` upgrades the first."""
+    root_a, payload_a = load(before_path, upgrade)
     root_b, payload_b = load(after_path)
     container_keys = [k for k in dict.fromkeys([*root_a, *root_b]) if k != "player_data_hex"]
     scalars = [k for k in container_keys if not isinstance(root_a.get(k, root_b.get(k)), (list, dict))]
@@ -128,20 +137,22 @@ def compare(before_path: str, after_path: str) -> List[str]:
     return lines
 
 
-def _describe(path: str) -> str:
-    root, payload = load(path)
+def _describe(path: str, upgrade: bool = False) -> str:
+    root, payload = load(path, upgrade)
     triple = (payload.get("version"), payload.get("inventory_version"), payload.get("skill_version"))
     return f"{path}: container version {root.get('version')}, payload {triple}, character {root.get('character_name')!r}"
 
 
 def main(argv=None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
+    upgrade = "--upgrade" in args
+    args = [arg for arg in args if arg != "--upgrade"]
     if len(args) != 2:
-        print("usage: python tools/compare_saves.py before.fch after.fch", file=sys.stderr)
+        print("usage: python tools/compare_saves.py [--upgrade] before.fch after.fch", file=sys.stderr)
         return 2
-    print(_describe(args[0]))
+    print(_describe(args[0], upgrade))
     print(_describe(args[1]))
-    lines = compare(args[0], args[1])
+    lines = compare(args[0], args[1], upgrade)
     for line in lines:
         print(line)
     print(f"{len(lines)} difference(s)")

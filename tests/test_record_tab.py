@@ -70,5 +70,20 @@ class RecordTabTests(unittest.TestCase):
             dispose(window)
 
 
+class RecordTabUpgradeTests(unittest.TestCase):
+    def test_the_record_tab_names_cheat_flags_the_upgrade_clears(self):
+        tab = RecordTab()
+        upgraded = realistic_player_data()
+        upgraded["_upgrade"] = {"from_container": 46, "from_payload": [33, 109, 2], "cleared_cheat_flags": 2}
+        tab.load_data(upgraded, realistic_root_save())
+        lines = list_texts(tab.lists["cheat_risk"])
+        self.assertEqual(len(lines), 5)
+        self.assertIn("Saving clears 2 item cheat flags", lines[2])
+        self.assertIn("1.0.20", lines[2])
+        tab.load_data(realistic_player_data(), realistic_root_save())
+        self.assertEqual(len(list_texts(tab.lists["cheat_risk"])), 4)
+        dispose(tab)
+
+
 if __name__ == "__main__":
     unittest.main()

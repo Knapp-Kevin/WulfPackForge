@@ -7,7 +7,8 @@ from contextlib import redirect_stdout
 from pathlib import Path
 
 from subscripts.playerDataUtil import pack_player_data_hex
-from tests.fixture_saves import realistic_v33_player_data, realistic_v46_root_save, write_fch
+from tests.fixture_saves import realistic_root_save, realistic_v33_player_data, realistic_v46_root_save, write_fch
+from subscripts.saveUpgrade import upgrade_root
 from tools.compare_saves import compare, main
 
 
@@ -63,7 +64,7 @@ class CompareSavesTests(unittest.TestCase):
         self.assertEqual(len(lines), 3, lines)
         self.assertIn("inventory (0, 0) SwordBronze: quality: 2 -> 3", lines)
         self.assertIn("inventory (3, 2): added Wood x10", lines)
-        self.assertTrue(any(line.startswith("inventory (2, 7): removed SpearGold_FrostFire") for line in lines), "the fixture's hash now resolves under the 1.0.12 catalogue")
+        self.assertTrue(any(line.startswith("inventory (2, 7): removed SpearGold_FrostFire") for line in lines), "the fixture's hash now resolves under the bundled catalogue")
 
     def test_collections_report_additions_and_removals(self):
         def edit(p):
@@ -95,6 +96,19 @@ class CompareSavesTests(unittest.TestCase):
         with redirect_stdout(io.StringIO()):
             main([a, b])
         self.assertEqual((Path(a).read_bytes(), Path(b).read_bytes()), before_bytes)
+
+
+class UpgradeModeTests(unittest.TestCase):
+    def test_upgrade_compares_the_editors_upgrade_with_a_file(self):
+        with tempfile.TemporaryDirectory() as temp:
+            older = str(write_fch(Path(temp) / "older.fch", realistic_root_save()))
+            upgraded = str(write_fch(Path(temp) / "upgraded.fch", upgrade_root(realistic_root_save())))
+            self.assertEqual(compare(older, upgraded, upgrade=True), [])
+            self.assertTrue(any(line.startswith("container.version: 43 -> 47") for line in compare(older, upgraded)))
+            out = io.StringIO()
+            with redirect_stdout(out):
+                self.assertEqual(main(["--upgrade", older, upgraded]), 0)
+            self.assertTrue(out.getvalue().rstrip().endswith("0 difference(s)"))
 
 
 if __name__ == "__main__":

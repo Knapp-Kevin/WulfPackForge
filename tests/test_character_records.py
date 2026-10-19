@@ -13,7 +13,7 @@ import subscripts.characterRecords as records_module
 from subscripts.characterRecords import classify_path, discover_character_records, find_state, scan_states
 from subscripts.stateCache import StateCache
 from subscripts.workspace import create_workspace_session
-from tests.fixture_saves import realistic_root_save, write_fch
+from tests.fixture_saves import realistic_root_save, realistic_v33_player_hex, realistic_v46_root_save, realistic_v47_root_save, write_fch
 from ui.characterPicker import CharacterPickerBar
 
 
@@ -68,6 +68,18 @@ class CharacterRecordTests(QtTestCase):
         self.assertEqual(len(by_name["Njord"].states), 1)  # same stamp as Ares' backup, another id
         self.assertFalse(by_name["broken"].valid)
         self.assertEqual(records[-1].name, "broken")  # invalid records sort last
+
+    def test_one_character_saved_at_43_46_and_47_is_one_record(self):
+        older, v46, v47 = realistic_root_save(name="Ares"), realistic_v46_root_save(realistic_v33_player_hex(), name="Ares"), realistic_v47_root_save(name="Ares")
+        for root in (older, v46, v47):
+            root["player_id"] = 4242
+        write_fch(self.save_dir / "ares_backup_auto-20250101.fch", older)
+        write_fch(self.save_dir / "ares.fch.old", v46)
+        write_fch(self.save_dir / "ares.fch", v47)
+        records = discover_character_records(home=self.home, system_name="Linux", workspace_root=self.workspace)
+        self.assertEqual([r.key for r in records], ["4242"])
+        self.assertEqual(sorted(s.version for s in records[0].states), [43, 46, 47])
+        self.assertTrue(all(s.valid for s in records[0].states))
 
     def test_the_head_of_a_record_is_the_newest_active_file_across_folders_and_says_so(self):
         local_dir = self.home / "AppData" / "LocalLow" / "IronGate" / "Valheim" / "characters_local"
@@ -147,13 +159,13 @@ class PickerRefusesWhatOpenCannotRead(QtTestCase):
         from subscripts.playerDataUtil import pack_player_data_hex
 
         packed = pack_player_data_hex(realistic_player_data())
-        stamped = (34).to_bytes(4, "little", signed=True).hex() + packed[8:80]
+        stamped = (35).to_bytes(4, "little", signed=True).hex() + packed[8:80]
         root = realistic_root_save(player_hex=stamped)
         with tempfile.TemporaryDirectory() as tmp:
             path = write_fch(Path(tmp) / "future.fch", root)
             fields = records_module._identity_fields(Path(path))
         self.assertFalse(fields["valid"])
-        self.assertIn("34", fields["error"])
+        self.assertIn("35", fields["error"])
 
 
 if __name__ == "__main__":

@@ -8,6 +8,7 @@ are read and written by ``subscripts.itemCodec`` in the layout the payload's
 """
 from subscripts.fchUtil import BinaryReader, BinaryWriter, STRING_ERRORS
 from subscripts.itemCodec import read_item, write_item
+from subscripts.payloadTail import read_tail, write_tail
 from subscripts.saveErrors import SaveFormatError
 
 __all__ = ["BinaryReader", "BinaryWriter", "STRING_ERRORS", "PlayerDataReader", "PlayerDataWriter",
@@ -20,12 +21,12 @@ __all__ = ["BinaryReader", "BinaryWriter", "STRING_ERRORS", "PlayerDataReader", 
 # _restate_body_failure restates that failure in terms of the payload version, so the
 # operator is told the save is from a newer Valheim instead of being shown a byte count.
 # (29, 106, 2) is validated on real saves of container versions 40-43; (33, 109, 2) is
-# validated on real Valheim 1.0 saves locally and on a synthetic fixture in CI.
-SUPPORTED_PLAYER_DATA_VERSIONS = frozenset({(29, 106, 2), (33, 109, 2)})
+# validated on real Valheim 1.0 saves locally and on a synthetic fixture in CI; (34, 110, 2)
+# on real Valheim 1.0.20 saves locally and on a synthetic fixture in CI.
+SUPPORTED_PLAYER_DATA_VERSIONS = frozenset({(29, 106, 2), (33, 109, 2), (34, 110, 2)})
 
 # Layout gates, as the game declares them.
 STRING_BIOMES_FROM = 33      # m_knownBiome holds strings rather than int32 flags
-BUILD_UI_FROM = 33           # a trailing byte[] carrying the build UI follows eitr
 USHORT_ITEM_COUNT_FROM = 108  # the inventory count is a ushort rather than an int32
 
 READABLE_PAYLOAD_VERSIONS = frozenset(triple[0] for triple in SUPPORTED_PLAYER_DATA_VERSIONS)
@@ -146,8 +147,7 @@ def unpack_player_data_hex(hex_string: str) -> dict:
         out["stamina"] = pkg.read_float()
         out["max_eitr"] = pkg.read_float()
         out["eitr"] = pkg.read_float()
-        if out["version"] >= BUILD_UI_FROM:
-            out["build_ui"] = pkg.read_byte_array()
+        read_tail(pkg, out)
         pkg.require_exhausted("player data payload")
     except SaveFormatError as exc:
         raise _restate_body_failure(out["version"], exc) from exc
@@ -242,6 +242,5 @@ def pack_player_data_hex(data: dict) -> str:
     pkg.write_float(data["stamina"])
     pkg.write_float(data["max_eitr"])
     pkg.write_float(data["eitr"])
-    if data["version"] >= BUILD_UI_FROM:
-        pkg.write_byte_array(data.get("build_ui", b""))
+    write_tail(pkg, data)
     return pkg.get_bytes().hex()

@@ -15,7 +15,7 @@ python tools/compare_saves.py <before.fch> <after.fch>
 
 ## 0. Preparation
 
-1. Valheim 1.0.12 or later installed and closed. Wulfpack Forge run from source on the branch or tag under validation (`run-wulfpack-forge.cmd`, or `python main.py`).
+1. Valheim 1.0.20 or later installed and closed. Wulfpack Forge run from source on the branch or tag under validation (`run-wulfpack-forge.cmd`, or `python main.py`).
 2. Create a **disposable character in-game** on the current build and play a few minutes so it has an inventory, a known biome and at least one recipe. Log out through the menu so the game writes the file. Do not use a character you care about.
 3. Make a scratch folder outside the game's save directories, for example `%USERPROFILE%\Desktop\wpf-validation\`.
 4. Note the character's file: `%USERPROFILE%\AppData\LocalLow\IronGate\Valheim\characters_local\<name>.fch`.
@@ -27,9 +27,9 @@ Record: the game version shown on the main menu and the Steam build id from `ste
 1. Copy `<name>.fch` to the scratch folder as `01-original.fch`.
 2. Open Wulfpack Forge, select the character in the picker.
 
-Expected: the status card reads **Verified**, the save version shows 46, the catalogue label reads `Valheim 1.0.12`, the Inventory tab shows the items by name, the Record tab shows known biomes by name and an **Achievement risk** section with four lines.
+Expected: the status card reads **Verified**, the save version shows 47 for a character saved by Valheim 1.0.20, the catalogue label reads `Valheim 1.0.20`, the Inventory tab shows the items by name, the Record tab shows known biomes by name and an **Achievement risk** section with four lines. For a character saved by an older Valheim the save version is the file's own, the status adds that saving writes it in the format Valheim 1.0.20 writes, and the Achievement risk section has five lines when the save upgrade clears item cheat flags.
 
-Record: `1. load: Verified, version 46, catalog 1.0.12`.
+Record: `1. load: Verified, version 47, catalog 1.0.20` (or the older version and the upgrade sentence).
 
 ## 2. No-op round trip
 
@@ -41,7 +41,7 @@ Record: `1. load: Verified, version 46, catalog 1.0.12`.
 python tools/compare_saves.py 01-original.fch 02-noop.fch
 ```
 
-Expected: `0 difference(s)`. The two headers show the same container version and payload triple.
+Expected, for a character saved by Valheim 1.0.20: `0 difference(s)`. The two headers show the same container version and payload triple. For a character saved by an older Valheim the plain comparison lists the save upgrade; compare with `python tools/compare_saves.py --upgrade 01-original.fch 02-noop.fch` instead, which upgrades the first file in memory and must report `0 difference(s)`.
 
 Record: the last line of the output.
 
@@ -93,6 +93,34 @@ Record: `5. guard: refused stale overwrite; backups present`.
 Expected: no appearance or inventory lines beyond session bookkeeping.
 
 Record: the comparison output. This closes issue #2 items "Valheim accepts the edited save" and "the intended changes survive in-game".
+
+## 6a. The game's own migration of an older character (migration pair)
+
+This compares the editor's save upgrade with the migration Valheim 1.0.20 itself performs. Valheim keeps a single `.fch.old` copy of the file it migrated, so copy both files at once.
+
+1. Pick a character last saved by a Valheim older than 1.0.20 (save version 43 or 46; Wulfpack Forge's status card shows the version). Before starting the game, copy its `.fch` to the scratch folder as `07-before.fch`.
+2. Start Valheim 1.0.20, load the character on the character screen, log out through the menu, close Valheim.
+3. Immediately copy the live `.fch` as `07-game.fch` and the live `.fch.old` as `07-game.fch.old`.
+4. Compare the editor's upgrade of the old file with the game's file:
+
+```bash
+python tools/compare_saves.py --upgrade 07-before.fch 07-game.fch
+```
+
+Expected: the only lines are changes the game makes on every load or save: `date_created_unix` (rewritten to a calendar day), play-time statistics, `pseudo_counter`, `build_ui` (the game saves its build menu state on every save, the editor an empty blob), world data if a world was entered, the game's every-load normalisation (an item it cannot resolve dropped, a stack clamped, a variant reset), and a 1.0 item's durability one hundredth lower (the game re-derives it through a float on every load). No line in the statistics records, the known-biome tokens or their order, an item's identity, a pre-1.0 item's durability, the cheat bytes or the payload triple.
+
+Record: the comparison output. This is the plan's migration pair (phase 49, D4.4).
+
+## 6b. An editor-upgraded older character loads in Valheim 1.0.20
+
+1. Use a disposable character last saved by a Valheim older than 1.0.20, or copy the original of the one you use to the scratch folder first. Open it in Wulfpack Forge: the status card reads **Verified**, shows the file's own save version and adds that saving writes it in the format Valheim 1.0.20 writes.
+2. Click **Save Changes** without editing. Copy the live file as `08-upgraded.fch`; the status card now shows version 47 without the sentence.
+3. Start Valheim 1.0.20, load the character into any world, open the inventory and the skills screen, look at the character, log out, close Valheim.
+4. Copy the live file as `08-game.fch`; compare `08-upgraded.fch` against it.
+
+Expected: the character loads with its items, skills and appearance; the only lines are session bookkeeping and the every-load lines listed in 6a.
+
+Record: the comparison output and what the game showed. This is the release gate's in-game evidence for the save upgrade (GOVERNANCE, release validation).
 
 ## 7. HDR / overbright colours (optional before release)
 

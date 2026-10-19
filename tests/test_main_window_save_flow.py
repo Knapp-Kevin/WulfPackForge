@@ -12,7 +12,9 @@ from PySide6.QtWidgets import QApplication
 from subscripts.playerDataUtil import unpack_player_data_hex
 from subscripts.saveSafety import verify_fch_round_trip
 from tests.qt_support import dispose
-from tests.fixture_saves import realistic_player_data, realistic_root_save, write_fch
+from tests.fixture_saves import realistic_player_data, realistic_root_save, realistic_v47_root_save, write_fch
+from subscripts.fchUtil import parse_save, serialize_save
+from subscripts.saveUpgrade import upgrade_root
 from subscripts.playerDataUtil import pack_player_data_hex
 from ui import mainWindow as mw
 from subscripts.valheim_detection import ScanState, ValheimScan
@@ -55,7 +57,7 @@ class MainWindowSaveFlowTests(unittest.TestCase):
         root = Path(self.temp.name)
         self.save_dir = root / "characters_local"
         self.save_dir.mkdir()
-        self.source = write_fch(self.save_dir / "hero.fch", realistic_root_save())
+        self.source = write_fch(self.save_dir / "hero.fch", realistic_v47_root_save())
         self.original = self.source.read_bytes()
         self.workspace_root = root / "workspace"
         RecordingMessageBox.calls = []
@@ -104,7 +106,7 @@ class MainWindowSaveFlowTests(unittest.TestCase):
         self.assertEqual(self.source.read_bytes(), self.original)  # nothing written yet
         self.window.save_save_file()
         self.assertEqual(RecordingMessageBox.calls[-1][0], "info")
-        self.assertEqual(self.source.read_bytes(), backup.read_bytes())
+        self.assertEqual(self.source.read_bytes(), serialize_save(upgrade_root(older)))
         self.assertEqual(len(self._backups()), 1)
         self.assertEqual(verify_fch_round_trip(str(self.source))["character_name"], "Older")
 
@@ -178,6 +180,7 @@ class MainWindowSaveFlowTests(unittest.TestCase):
         self.assertEqual(self.window.save_status.state_label.text(), "Verified")
         payload = unpack_player_data_hex(verify_fch_round_trip(str(created))["player_data_hex"])
         self.assertEqual((payload["model_index"], payload["hair"], payload["beard"]), (1, "Hair7", "BeardNone"))
+        self.assertEqual(parse_save(created.read_bytes())["version"], 47)
         original = created.read_bytes()
         self.window.save_save_file()
         self.assertEqual(created.read_bytes(), original)
@@ -192,16 +195,47 @@ class MainWindowSaveFlowTests(unittest.TestCase):
         self.assertIn(("startup", "constructed"), RecordingMessageBox.calls)
         loud.close()
 
-    def test_a_v33_character_opens_writable_and_saves_byte_identically(self):
+    def test_a_v46_character_is_upgraded_on_save(self):
         from tests.fixture_saves import realistic_v33_player_hex, realistic_v46_root_save
 
         modern = write_fch(self.save_dir / "modern.fch", realistic_v46_root_save(realistic_v33_player_hex(), name="Modern"))
-        original = modern.read_bytes()
         self.window.load_save_file(str(modern))
         self.assertTrue(self.window.btn_save_save.isEnabled(), "a 1.0 character must be editable")
         self.assertEqual(self.window.save_status.state_label.text(), "Verified")
+        detail = self.window.save_status.detail_label.text()
+        self.assertIn("Save version 46", detail)
+        self.assertIn("the format Valheim 1.0.20 writes", detail)
+        risk = self._risk_lines()
+        self.assertTrue(any("Saving clears 1 item cheat flag" in line for line in risk), risk)
         self.window.save_save_file()
-        self.assertEqual(modern.read_bytes(), original)
+        written = parse_save(modern.read_bytes())
+        payload = unpack_player_data_hex(written["player_data_hex"])
+        self.assertEqual((written["version"], payload["version"], payload["inventory_version"], payload["skill_version"]), (47, 34, 110, 2))
+        sword = next(item for item in payload["inventory"] if item["prefab"] == "SwordBronze")
+        self.assertEqual(sword["_wire"]["cheat_flags"] & 1, 0)
+        self.assertNotIn("Valheim 1.0.20 writes", self.window.save_status.detail_label.text())
+        self.assertFalse(any("Saving clears" in line for line in self._risk_lines()))
+
+    def test_an_older_character_saves_as_its_exact_upgrade(self):
+        older = write_fch(self.save_dir / "older.fch", realistic_root_save(name="Older"))
+        self.window.load_save_file(str(older))
+        self.window.save_save_file()
+        self.assertEqual(RecordingMessageBox.calls[-1][0], "info")
+        self.assertEqual(older.read_bytes(), serialize_save(upgrade_root(realistic_root_save(name="Older"))))
+
+    def test_a_failed_load_does_not_show_the_previous_characters_upgrade(self):
+        older = write_fch(self.save_dir / "older.fch", realistic_root_save(name="Older"))
+        self.window.load_save_file(str(older))
+        self.assertIn("Save v43", self.window.save_status.meta_label.text())
+        hollow = realistic_v47_root_save(name="Hollow")
+        hollow["player_data_hex"] = None
+        self.window.load_save_file(str(write_fch(self.save_dir / "hollow.fch", hollow)))
+        self.assertIn("Save v47", self.window.save_status.meta_label.text())
+        self.assertNotIn("Valheim 1.0.20 writes", self.window.save_status.detail_label.text())
+
+    def _risk_lines(self):
+        widget = self.window.record_tab.lists["cheat_risk"]
+        return [widget.item(i).text() for i in range(widget.count())]
 
     def test_unsupported_inner_version_is_read_only(self):
         payload = realistic_player_data()

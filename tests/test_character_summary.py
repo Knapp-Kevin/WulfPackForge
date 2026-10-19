@@ -47,5 +47,15 @@ class CharacterSummaryTests(unittest.TestCase):
         self.assertEqual((summary.world_count, summary.worlds, summary.trophies, summary.recipes), (0, [], [], []))
 
 
+class KnownWorldsTests(unittest.TestCase):
+    def test_known_worlds_are_read_from_the_stat_records(self):
+        from tests.fixture_saves import realistic_v46_root_save
+
+        root = realistic_v46_root_save()
+        self.assertEqual(summarize(root, realistic_player_data()).worlds, ["WorldA"])
+        root["stat_records"][6]["known_worlds"] = {"Midgard": 1.0}
+        self.assertEqual(summarize(root, realistic_player_data()).worlds, ["Midgard", "WorldA"])
+
+
 if __name__ == "__main__":
     unittest.main()

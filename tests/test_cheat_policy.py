@@ -59,5 +59,22 @@ class CheatPolicyTests(unittest.TestCase):
         self.assertIn("2", risk_lines(CheatRisk(profile_flag=True, cheated_items=2, bypass_active=True))[1])
 
 
+class UpgradeDisclosureTests(unittest.TestCase):
+    def test_a_cleared_count_adds_a_fifth_line_before_the_unobservable_one(self):
+        from subscripts.cheatRisk import UNOBSERVABLE
+
+        lines = risk_lines(CheatRisk(profile_flag=False, cheated_items=2, bypass_active=False, cleared_on_upgrade=2))
+        self.assertEqual(len(lines), 5)
+        self.assertIn("2 item cheat flags", lines[2])
+        self.assertEqual(lines[-1], UNOBSERVABLE)
+
+    def test_the_item_count_is_the_file_on_disk_before_the_save(self):
+        upgraded = realistic_v33_player_data()
+        upgraded["inventory"][0]["_wire"]["cheat_flags"] = 0
+        upgraded["_upgrade"] = {"from_container": 46, "from_payload": [33, 109, 2], "cleared_cheat_flags": 1}
+        risk = from_character(realistic_root_save(), upgraded)
+        self.assertEqual((risk.cheated_items, risk.cleared_on_upgrade), (1, 1))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -1,5 +1,8 @@
 """Inventory item records: the version 106 layout and the version 109 bitfield layout.
 
+Version 110 (Valheim 1.0.20) writes the 109 record unchanged; its trailing byte is a flags
+byte whose bit 0 is the cheated mark, which the game honours only from 110.
+
 The reader always returns the dictionary the editor consumes (``prefab``, ``stack``,
 ``durability``, ``grid_x``, ``grid_y``, ``equipped``, ``quality``, ``variant``,
 ``crafter_id``, ``crafter_name``, ``custom_data``, ``world_level``, ``picked_up``). A

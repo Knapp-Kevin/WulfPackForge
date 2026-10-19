@@ -86,6 +86,13 @@ def guardian_label(power: str) -> str:
     return power[len("GP_"):] if power.startswith("GP_") else power
 
 
+def _known_worlds(root: dict) -> set:
+    """Known worlds from the pre-1.0 key, or the union over every 1.0 statistics record."""
+    if "known_worlds" in root:
+        return set(root["known_worlds"] or {})
+    return {name for record in root.get("stat_records") or () for name in record.get("known_worlds") or {}}
+
+
 def summarize(root_save: dict, player_data: dict) -> CharacterSummary:
     """Build the summary shown on the Record tab; tolerant of missing fields."""
     root, data = root_save or {}, player_data or {}
@@ -95,7 +102,7 @@ def summarize(root_save: dict, player_data: dict) -> CharacterSummary:
         player_id=UNKNOWN if player_id is None else str(player_id),
         guardian_power=guardian_label(data.get("guardian_power", "")),
         world_count=len(root.get("worlds") or ()),
-        worlds=sorted(root.get("known_worlds") or {}),
+        worlds=sorted(_known_worlds(root)),
         biomes=biome_labels(data.get("known_biomes")),
         trophies=item_labels(data.get("trophies")),
         recipes=sorted(recipe_label(recipe) for recipe in data.get("known_recipes") or ()),

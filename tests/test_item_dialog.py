@@ -26,7 +26,7 @@ def item_data(prefab, stack=1, quality=1, variant=0):
 class ItemEditDialogTests(QtTestCase):
     def test_known_item_uses_catalog_constraints(self):
         dialog = ItemEditDialog(item_data("ArrowWood", stack=20))
-        self.assertIn("Valheim 1.0.12 catalog", dialog.catalog_status.text())
+        self.assertIn("Valheim 1.0.20 catalog", dialog.catalog_status.text())
         self.assertEqual(dialog.stack_input.maximum(), 100)
         self.assertEqual(dialog.quality_input.maximum(), 1)
         self.assertEqual(dialog.variant_input.maximum(), 0)
@@ -48,7 +48,7 @@ class ItemEditDialogTests(QtTestCase):
         self.assertEqual(updated["stack"], 777)
         self.assertEqual(updated["quality"], 42)
         self.assertEqual(updated["variant"], 123)
-        self.assertIn("Not found in the Valheim 1.0.12 catalog", dialog.catalog_status.text())
+        self.assertIn("Not found in the Valheim 1.0.20 catalog", dialog.catalog_status.text())
         self.assertIn("newer game version", dialog.catalog_status.text())
         dialog.close()
 

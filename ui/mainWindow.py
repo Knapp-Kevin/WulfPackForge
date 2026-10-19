@@ -10,9 +10,9 @@ from ui.appearanceTab import AppearanceTab
 from ui.miscTab import MiscTab
 from ui.recordTab import RecordTab
 from ui.saveStatusWidget import SaveStatusWidget
-from subscripts.valheim_detection import ScanState, ValheimScan, scan_valheim, valheim_warning_message
+from subscripts.valheim_detection import scan_valheim
 from ui.editorModeBar import EditorModeBar
-from ui.saveGuards import block_for_valheim
+from ui.saveGuards import block_for_valheim, warn_if_valheim_running
 from ui.lifetime import modal
 from ui.branding import APP_WINDOW_TITLE
 from ui.brandBanner import BANNER_MAX_HEIGHT, BANNER_MIN_HEIGHT, BrandBanner, banner_height_for
@@ -28,6 +28,7 @@ from subscripts.saveHealth import build_save_health_report
 from subscripts.saveSafety import DestinationChangedError, replace_verified_save, verify_fch_round_trip
 from subscripts.workspace import SourceChangedError, WorkspaceError, create_workspace_session, store_verified_working_copy
 from subscripts.playerDataUtil import pack_player_data_hex, payload_is_supported, unpack_player_data_hex
+from subscripts.saveUpgrade import upgrade_save
 
 logger = logging.getLogger(__name__)
 __all__ = ["MainWindow", "BANNER_MAX_HEIGHT", "BANNER_MIN_HEIGHT", "banner_height_for"]
@@ -40,7 +41,7 @@ class MainWindow(QMainWindow):
     def __init__(self, startup_warning: bool = True):
         super().__init__()
         if startup_warning:
-            self._warn_if_valheim_running()
+            warn_if_valheim_running(self, scan_valheim(), QMessageBox)
         self.__dict__.update(_EMPTY_STATE)
         self.setWindowTitle(APP_WINDOW_TITLE)
         self.resize(1200, 940)
@@ -71,14 +72,6 @@ class MainWindow(QMainWindow):
         self.picker.restore_requested.connect(self.load_save_file)  # (state path, head path)
         self.picker.new_requested.connect(self.create_new_character)
         self.refresh_discovered_characters()
-
-    def _warn_if_valheim_running(self):
-        scan: ValheimScan = scan_valheim()
-        if scan.state != ScanState.RUNNING:
-            return
-        with modal(QMessageBox(QMessageBox.Warning, "Valheim Running", valheim_warning_message(scan), QMessageBox.Ok, self)) as msg:
-            msg.setInformativeText(messages.STARTUP_RUNNING_INFO)
-            msg.exec()
 
     def closeEvent(self, event):
         self.picker.shutdown()
@@ -119,7 +112,7 @@ class MainWindow(QMainWindow):
             valid=valid, version=version, source=source or self.current_source,
             modified_at=self.current_modified_at if modified_at is None else modified_at,
             error=error, backup_path=backup_path, source_changed=source_changed,
-            payload_supported=self.current_payload_supported,
+            payload_supported=self.current_payload_supported, upgrade=(self.player_data or {}).get("_upgrade"),
         )
         self.save_status.set_report(report)
         self.btn_save_save.setEnabled(bool(self.root_save and self.player_data and report.writable))
@@ -155,7 +148,7 @@ class MainWindow(QMainWindow):
                                  modified_at=modified_at, error=messages.NO_PLAYER_DATA_HEALTH)
                 QMessageBox.warning(self, messages.NO_PLAYER_DATA_TITLE, messages.NO_PLAYER_DATA_BODY)
                 return
-            player_data = unpack_player_data_hex(player_hex)
+            root_save, player_data = upgrade_save(root_save, unpack_player_data_hex(player_hex))
             session = create_workspace_session(target, root_save)
             self._adopt_loaded(target, root_save, player_data, session, source, modified_at)
             if apply_to:
@@ -240,6 +233,8 @@ class MainWindow(QMainWindow):
 
     def _finish_apply(self, backup_path):
         self.workspace_session.update_after_apply(backup_path)
+        self.player_data.pop("_upgrade", None)  # the file now carries the current format
+        self.record_tab.load_data(self.player_data, self.root_save)
         self.opened_root = copy.deepcopy(self.root_save)
         self.current_modified_at = mtime_or_none(self.current_fch)
         self._set_health(valid=True, version=self.root_save.get("version"), modified_at=self.current_modified_at,

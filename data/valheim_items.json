@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
-  "game_version": "1.0.12",
-  "build_id": 25253764,
+  "game_version": "1.0.20",
+  "build_id": 25909357,
   "source": {
     "name": "Installed Valheim game data (ItemDrop shared data and localization assets)",
     "url": "",
@@ -5011,7 +5011,7 @@
     },
     {
       "prefab": "BowAshlands",
-      "display_name": "Ashlands Bow",
+      "display_name": "Ash Fang",
       "item_type": "Bow",
       "asset_id": "811f697b71a83ab4483c449e33f65516",
       "selectable": true,
@@ -19103,7 +19103,7 @@
       "limits": {
         "max_stack": 1,
         "max_quality": 3,
-        "variants": 4
+        "variants": 3
       },
       "durability": {
         "max": 200.0,
