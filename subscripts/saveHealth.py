@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Optional
 
 from data.items import CATALOG_GAME_VERSION
+from subscripts.fchUtil import CURRENT_CHARACTER_SAVE_VERSION, CURRENT_FORMAT_GAME_VERSION
 
 
 SAVE_STATE_VERIFIED = "Verified"
@@ -11,11 +12,14 @@ SAVE_STATE_NEEDS_ATTENTION = "Needs attention"
 SAVE_STATE_COMPATIBILITY_UNVERIFIED = "Compatibility unverified"
 
 # Character-save container versions this codec round-trips byte-identical. Versions 40-43
-# are evidenced by real saves (22 v40-v42 files and 18 v43 files, 2026-09-06); version 46
-# is evidenced by a synthetic fixture only, because no real v46 save is committed to this
-# repository. The player payload is gated separately by SUPPORTED_PLAYER_DATA_VERSIONS;
+# are evidenced by real saves (22 v40-v42 files and 18 v43 files, 2026-09-06); versions 46
+# and 47 are evidenced by real saves locally and by synthetic fixtures in CI, because no real
+# Valheim 1.0 save is committed to this repository. The player payload is gated separately by
+# SUPPORTED_PLAYER_DATA_VERSIONS;
 # any other outer version is read-only.
-SUPPORTED_CHARACTER_SAVE_VERSIONS = frozenset({40, 41, 42, 43, 46})
+SUPPORTED_CHARACTER_SAVE_VERSIONS = frozenset({40, 41, 42, 43, 46, 47})
+UPGRADE_NOTE = (f" Saving writes it in the format Valheim {CURRENT_FORMAT_GAME_VERSION} writes (save version "
+                f"{CURRENT_CHARACTER_SAVE_VERSION}).")
 
 
 @dataclass(frozen=True)
@@ -67,8 +71,10 @@ def build_save_health_report(
     catalog_game_version: Optional[str] = CATALOG_GAME_VERSION,
     source_changed: bool = False,
     payload_supported: bool = True,
+    upgrade: Optional[dict] = None,
 ) -> SaveHealthReport:
     source = (source or "File").strip() or "File"
+    version = upgrade["from_container"] if upgrade and valid else version  # the file's own version, before the upgrade
     common = dict(save_version=version, source=source, modified_at=modified_at,
                   catalog_game_version=catalog_game_version, backup_path=backup_path)
 
@@ -91,11 +97,14 @@ def build_save_health_report(
                     "the current write-validated set. You can inspect the character, but Save Changes "
                     "is disabled until compatibility is validated."),
             error=None, source_changed=False, **common)
-    return SaveHealthReport(
-        state=SAVE_STATE_VERIFIED, verification_ok=True, writable=True,
-        detail=(f"Checksum and structure verified. Save version {version} is in the current "
-                "write-validated set. Wulfpack Forge keeps a protected workspace snapshot before edits are applied."),
-        error=None, source_changed=False, **common)
+    return SaveHealthReport(state=SAVE_STATE_VERIFIED, verification_ok=True, writable=True,
+                            detail=_verified_detail(version, upgrade), error=None, source_changed=False, **common)
+
+
+def _verified_detail(version: Optional[int], upgrade: Optional[dict]) -> str:
+    detail = (f"Checksum and structure verified. Save version {version} is in the current write-validated "
+              "set. Wulfpack Forge keeps a protected workspace snapshot before edits are applied.")
+    return detail + UPGRADE_NOTE if upgrade else detail
 
 
 def _compatibility_reason(version: Optional[int]) -> str:

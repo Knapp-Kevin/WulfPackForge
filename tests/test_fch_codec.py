@@ -13,7 +13,7 @@ from subscripts.fchUtil import (
     serialize_save,
 )
 from subscripts.saveErrors import SaveFormatError
-from tests.fixture_saves import realistic_root_save, realistic_v46_root_save
+from tests.fixture_saves import realistic_root_save, realistic_v46_root_save, realistic_v47_root_save
 
 
 def _reframe(zpackage: bytes) -> bytes:
@@ -81,8 +81,24 @@ class V46ContainerTests(unittest.TestCase):
         self.assertEqual(parsed["version"], 43)
         self.assertEqual(serialize_save(parsed), data)
 
+    def test_container_47_round_trips_with_the_46_layout(self):
+        data = serialize_save(realistic_v47_root_save())
+        parsed = parse_save(data)
+        self.assertEqual(parsed["version"], 47)
+        self.assertEqual(len(parsed["stat_records"]), 10)
+        self.assertEqual(serialize_save(parsed), data)
+
+    def test_a_newer_container_is_named_as_from_a_newer_valheim(self):
+        broken = _reframe(struct.pack("<i", 48) + b"\x00" * 32)
+        with self.assertRaises(SaveFormatError) as caught:
+            parse_save(broken)
+        message = str(caught.exception)
+        self.assertIn("newer Valheim", message)
+        self.assertIn("48", message)
+        self.assertIn("47", message)
+
     def test_versions_outside_the_supported_set_are_refused_by_name(self):
-        for version in (44, 45, 47):
+        for version in (44, 45):
             with self.subTest(version=version):
                 broken = _reframe(struct.pack("<i", version) + b"\x00" * 32)
                 with self.assertRaises(SaveFormatError) as caught:

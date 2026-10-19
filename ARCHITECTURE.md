@@ -108,7 +108,7 @@ Normal product flows use the strict verification layer rather than relying on pe
 
 ### `subscripts/playerDataUtil.py`
 
-Decodes and repacks the character's inner player-data payload.
+Decodes and repacks the character's inner player-data payload. Everything after the `eitr` field lives in `subscripts/payloadTail.py`: the build-UI blob from player-data version 33, and from version 34 the two count-prefixed integer dictionaries Valheim 1.0.20 appends (game RNG state, carried as opaque ordered pairs).
 
 ### `subscripts/saveHealth.py`
 
@@ -120,7 +120,11 @@ Current states:
 - `Compatibility unverified`
 - `Needs attention`
 
-A file that parses successfully is not automatically considered writable. Write validation covers character-save versions 40 through 43 and the version 46 container Valheim 1.0 writes; the inner payload is checked separately and is writable at player-data version 29 with inventory version 106, or player-data version 33 with inventory version 109, both with skill version 2.
+A file that parses successfully is not automatically considered writable. Write validation covers character-save versions 40 through 43, the version 46 container Valheim 1.0 writes and the version 47 container Valheim 1.0.20 writes; the inner payload is checked separately and is writable at player-data version 29 with inventory version 106, player-data version 33 with inventory version 109, or player-data version 34 with inventory version 110, all with skill version 2. A writable character older than the current format is opened through the save upgrade, so the status reports the file's own version and adds that saving writes it in the format Valheim 1.0.20 writes.
+
+### `subscripts/saveUpgrade.py` and `subscripts/itemRecordTable.py`
+
+The save upgrade is a pure, load-time value transform: `upgrade_save(root, payload)` converts a readable character at container 40-43 or 46 to container 47, player data 34 and item records 110, and returns its inputs unchanged when they are already current or not writable. It reproduces only the part of Valheim 1.0.20's own migration that differs by version (statistics into ten records of 205 entries, integer known biomes into the game's `$biome_` tokens, legacy item records into the hashed 1.0 record, a pre-1.0.20 item's cheated mark not applied) and leaves the game's every-load normalisation (unknown prefabs, stack clamps, variant resets, the damage threshold, the re-derivation of a 1.0 item's durability through a float) to the game, which re-applies it on every load. `subscripts/itemRecordTable.py` is the game's item writer (`ItemData::Save`) as a table, lifted from the game's code row by row: the upgrade encodes every converted item with it and accepts the item only when the item codec reads and rewrites that record identically. Anything it cannot convert exactly (a statistics array longer than the game writes, an unnamed biome value, a pre-1.0 durability on which the float precisions disagree, an item the codec cannot hold as the game writes it) raises `SaveFormatError` rather than being approximated. The function records what it did as `payload["_upgrade"]`, which no writer serializes; the status card and the Record tab read it for their disclosure.
 
 ### `subscripts/logSetup.py`
 
@@ -198,7 +202,7 @@ Provides behavioral evidence for save safety, managed workspaces, external-chang
 
 ### Create
 
-`subscripts/newCharacter.py` synthesises a new character from defaults calibrated against characters created in-game (no embedded game binary): the outer container and player payload are built as dictionaries, serialized through the same codec that round-trips real saves, written to a temporary file in the chosen characters folder, strictly verified, and moved into place only if no file with that name exists. The new file then enters the normal Load path.
+`subscripts/newCharacter.py` synthesises a new character from defaults calibrated against characters created in-game (no embedded game binary): the outer container and player payload are built as dictionaries in the calibrated (version 43) layout, converted to the current format by the save upgrade, serialized through the same codec that round-trips real saves, written to a temporary file in the chosen characters folder, strictly verified, and moved into place only if no file with that name exists. The new file then enters the normal Load path.
 
 ### Load
 
@@ -217,7 +221,7 @@ A save that cannot be verified and protected is not loaded into the normal editi
 
 UI controls mutate the working in-memory character representation. The opened baseline remains unchanged during the editing session. The durable workspace source snapshot likewise remains unchanged.
 
-Editor tabs follow **preserve-by-default write-back**: each tab records what every widget reports immediately after a character is loaded and, on Save Changes, writes back only the fields whose widget value differs. Values the widgets cannot represent (an unknown skill ID, a hairstyle or beard missing from the lookup tables, a fourth active food, floating-point precision beyond a spin box) therefore pass through untouched, and a no-op save produces a byte-identical file. Unknown enumerations are shown as explicit "Unknown (raw)" entries rather than replaced with defaults.
+Editor tabs follow **preserve-by-default write-back**: each tab records what every widget reports immediately after a character is loaded and, on Save Changes, writes back only the fields whose widget value differs. Values the widgets cannot represent (an unknown skill ID, a hairstyle or beard missing from the lookup tables, a fourth active food, floating-point precision beyond a spin box) therefore pass through untouched on a current-format character, and a no-op save of one produces a byte-identical file; an older character is written as its save upgrade, which converts what its format no longer stores. Unknown enumerations are shown as explicit "Unknown (raw)" entries rather than replaced with defaults.
 
 This separation supports future semantic diffing and recovery without reconstructing the original state after the fact.
 
@@ -267,7 +271,7 @@ The packaged smoke test verifies that critical generated, branding, and glyph as
 
 Game-version compatibility is explicit state, not an assumption.
 
-The parser reads character-save versions 40 and newer exactly and refuses older layouts with a clear error. Writing is enabled for character-save versions 40 through 43 and 46 (each round-tripped byte-identical on real saves) whose player payload reports either player-data version 29 with inventory version 106, or player-data version 33 with inventory version 109, and skill version 2 in both cases; any other combination is inspectable but read-only (`Compatibility unverified`). Both decoders reject a save that leaves bytes unconsumed, so a newer layout can never be silently truncated on save.
+The parser reads character-save versions 40 through 43, 46 and 47 exactly and refuses older layouts, versions 44 and 45 (no layout this build can verify), and a version from a newer Valheim, with a clear error. Writing is enabled for character-save versions 40 through 43, 46 and 47 (each round-tripped byte-identical on real saves) whose player payload reports player-data version 29 with inventory version 106, player-data version 33 with inventory version 109, or player-data version 34 with inventory version 110, and skill version 2 in every case; any other combination is inspectable but read-only (`Compatibility unverified`). Every save is written at container 47, player data 34 and item records 110: the save upgrade converts an older character when it is opened, reproducing the game's version-gated conversion and leaving its every-load normalisation to the game, and a new character is the save upgrade of the calibrated template. Both decoders reject a save that leaves bytes unconsumed, so a newer layout can never be silently truncated on save.
 
 A new Valheim version can affect:
 

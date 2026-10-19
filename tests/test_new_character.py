@@ -10,6 +10,7 @@ from subscripts.fchUtil import parse_save, serialize_save
 from subscripts.newCharacter import (
     create_character_file,
     character_file_path,
+    legacy_character_root,
     new_character_root,
     validate_name,
 )
@@ -85,7 +86,7 @@ CORVUS_APPEARANCE = {
 
 class NewCharacterRootTests(unittest.TestCase):
     def test_root_matches_in_game_template(self):
-        root = new_character_root("Template", now=1788718254, rng=random.Random(7))
+        root = legacy_character_root("Template", now=1788718254, rng=random.Random(7))
         parsed = parse_save(serialize_save(root))
         payload = unpack_player_data_hex(parsed.pop("player_data_hex"))
         player_id = parsed.pop("player_id")
@@ -150,6 +151,21 @@ class CharacterFileTests(unittest.TestCase):
                 with self.assertRaises(SaveFormatError):
                     create_character_file(Path(temp_dir), copy.deepcopy(root))
             self.assertEqual(list(Path(temp_dir).iterdir()), [])
+
+
+class CurrentFormatTests(unittest.TestCase):
+    def test_a_new_character_is_written_at_the_current_format(self):
+        from subscripts.saveUpgrade import upgrade_root
+
+        root = new_character_root("Sigrun", now=1788718254, rng=random.Random(5))
+        payload = unpack_player_data_hex(root["player_data_hex"])
+        self.assertEqual((root["version"], payload["version"], payload["inventory_version"], payload["skill_version"]), (47, 34, 110, 2))
+        self.assertEqual(root, upgrade_root(legacy_character_root("Sigrun", now=1788718254, rng=random.Random(5))))
+
+    def test_a_created_character_file_verifies_at_47(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = create_character_file(Path(temp_dir), new_character_root("Sigrun", rng=random.Random(6)))
+            self.assertEqual(verify_fch_round_trip(str(path))["version"], 47)
 
 
 if __name__ == "__main__":

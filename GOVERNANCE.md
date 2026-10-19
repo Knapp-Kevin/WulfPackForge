@@ -43,6 +43,7 @@ The following are release-level invariants:
 7. Verification failure must leave the existing destination untouched.
 8. Unknown or modded data should be preserved unless the user explicitly changes it.
 9. Compatibility claims must be backed by evidence for the stated Valheim version.
+10. Every save Wulfpack Forge writes through Save Changes or New Character is written at the current Valheim format. The save upgrade applies the game's version-gated conversion as read from the game's code: each item is written by a table of the game's item writer, lifted from its code row by row, and accepted only when the editor's item codec reads and rewrites that record identically; the two choices the game's code leaves to its runtime (the order of the known-biome set, the float precision of a pre-1.0 item's durability conversion) rest on recorded evidence, and a pre-1.0 durability on which the precisions disagree is refused; a 1.0 item's durability is kept as stored, the game's own re-derivation of it on every load being left to the game. A character whose conversion the editor cannot reproduce is refused rather than approximated, and the game's every-load normalisation is never applied, so unknown or modded data stays preserved (invariant 8).
 
 Changes to these invariants require an explicit governance update and a documented rationale in the pull request.
 

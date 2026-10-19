@@ -16,7 +16,7 @@ from subscripts.editorMode import MODE_FULL, MODE_VANILLA, load_mode
 from subscripts.newCharacter import DEFAULT_SKIN
 from subscripts.saveSafety import verify_fch_round_trip
 from subscripts.valheim_detection import ScanState, ValheimScan
-from tests.fixture_saves import realistic_root_save, write_fch
+from tests.fixture_saves import realistic_root_save, realistic_v47_root_save, write_fch
 from tests.qt_support import dispose
 from tools.compare_saves import compare
 from ui import editorModeBar, mainWindow as mw, newCharacterDialog as ncd
@@ -65,7 +65,7 @@ class VanillaModeTests(unittest.TestCase):
         root = Path(self.temp.name)
         self.save_dir = root / "characters_local"
         self.save_dir.mkdir()
-        self.source = write_fch(self.save_dir / "hero.fch", realistic_root_save())
+        self.source = write_fch(self.save_dir / "hero.fch", realistic_v47_root_save())
         self.before = root / "before.fch"
         shutil.copy(self.source, self.before)
         self.workspace_root = root / "workspace"
@@ -224,6 +224,31 @@ class VanillaModeTests(unittest.TestCase):
         self.window.misc_tab.name_input.setText("frost wulf")
         self.window.save_save_file()
         self.assertEqual(_fields(compare(str(self.before), str(self.source))), ["container.character_name"])
+
+    def _load_older(self):
+        """A pre-1.0.20 (v43) character, opened in the window; returns its copy taken before any save."""
+        older = write_fch(self.save_dir / "older.fch", realistic_root_save(name="Older Hero"))
+        before = self.save_dir.parent / "older-before.fch"
+        shutil.copy(older, before)
+        self.window.load_save_file(str(older))
+        return older, before
+
+    def test_a_mode_save_of_an_older_character_changes_only_the_skin_beyond_its_upgrade(self):
+        older, before = self._load_older()
+        self._mode(True)
+        self._pick(4)
+        self.window.save_save_file()
+        self.assertEqual(_fields(compare(str(before), str(older), upgrade=True)), ["payload.skin_color"])
+        self.assertIn("container.version", _fields(compare(str(before), str(older))))
+
+    def test_a_mode_rename_of_an_older_character_changes_only_the_name_and_skin_beyond_its_upgrade(self):
+        older, before = self._load_older()
+        self._mode(True)
+        self._pick(4)
+        self.window.misc_tab.name_input.setText("Older Wulf")
+        self.window.save_save_file()
+        self.assertEqual(_fields(compare(str(before), str(older), upgrade=True)),
+                         ["container.character_name", "payload.skin_color"])
 
     def test_the_mode_is_remembered_across_windows(self):
         self._mode(True)

@@ -3,7 +3,9 @@
 Defaults were taken verbatim from two characters created in Valheim on
 2026-09-06 with no edits (see tests/test_new_character.py). No game binary is
 embedded; the file is synthesised through the same codec that round-trips
-real saves byte-identical.
+real saves byte-identical. The calibrated template is the pre-1.0 layout those characters
+were saved in; a new character is that template's save upgrade, so it is written in the
+current Valheim format by the same conversion the game applies.
 """
 import logging
 import os
@@ -17,6 +19,7 @@ from typing import List, Optional
 from subscripts.fchUtil import serialize_save, write_fch_bytes
 from subscripts.playerDataUtil import pack_player_data_hex
 from subscripts.saveSafety import verify_fch_round_trip
+from subscripts.saveUpgrade import upgrade_root
 
 NAME_PATTERN = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9]| (?=[A-Za-z0-9])){1,13}[A-Za-z0-9]$")
 _RESERVED = {"con", "prn", "aux", "nul"} | {f"com{i}" for i in range(1, 10)} | {f"lpt{i}" for i in range(1, 10)}
@@ -82,9 +85,9 @@ def _default_payload(model_index, hair, beard, skin_color, hair_color) -> dict:
     }
 
 
-def new_character_root(name: str, *, model_index: int = 0, hair: str = "", beard: str = "",
-                       skin_color=None, hair_color=None, now: Optional[int] = None, rng=None) -> dict:
-    """The outer save dictionary for a fresh character, ready for ``serialize_save``."""
+def legacy_character_root(name: str, *, model_index: int = 0, hair: str = "", beard: str = "",
+                          skin_color=None, hair_color=None, now: Optional[int] = None, rng=None) -> dict:
+    """The calibrated template: a fresh character in the layout the in-game samples were saved in."""
     rng = rng or random.SystemRandom()
     player_id = rng.randint(-2**31, 2**31 - 1) or 1
     payload = _default_payload(model_index, hair, beard, skin_color or DEFAULT_SKIN, hair_color or DEFAULT_HAIR_COLOR)
@@ -96,6 +99,11 @@ def new_character_root(name: str, *, model_index: int = 0, hair: str = "", beard
         "enemy_stats": {}, "item_pickup_stats": {}, "item_craft_stats": {},
         "player_data_hex": pack_player_data_hex(payload),
     }
+
+
+def new_character_root(name: str, **choices) -> dict:
+    """The outer save dictionary for a fresh character at the current format, ready for ``serialize_save``."""
+    return upgrade_root(legacy_character_root(name, **choices))
 
 
 def root_from_spec(spec: NewCharacterSpec) -> dict:

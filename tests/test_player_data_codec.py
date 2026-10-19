@@ -70,9 +70,9 @@ class UnreadablePayloadRestatementTests(unittest.TestCase):
 
     def test_an_unreadable_newer_payload_names_its_version_not_a_byte_count(self):
         with self.assertRaises(SaveFormatError) as caught:
-            unpack_player_data_hex(self._unreadable(34))
+            unpack_player_data_hex(self._unreadable(35))
         message = str(caught.exception)
-        self.assertIn("34", message)
+        self.assertIn("35", message)
         self.assertIn("newer Valheim", message)
         self.assertNotIn("wanted", message)
         with self.assertRaises(SaveFormatError) as known:
@@ -127,10 +127,39 @@ class V33PayloadTests(unittest.TestCase):
         self.assertEqual(unpack_player_data_hex(pack_player_data_hex(without))["build_ui"], b"")
 
     def test_payload_is_supported_accepts_both_triples(self):
-        for triple, expected in (((29, 106, 2), True), ((33, 109, 2), True), ((33, 106, 2), False), ((30, 106, 2), False)):
+        for triple, expected in (((29, 106, 2), True), ((33, 109, 2), True), ((34, 110, 2), True), ((33, 106, 2), False), ((30, 106, 2), False)):
             version, inventory_version, skill_version = triple
             data = {"version": version, "inventory_version": inventory_version, "skill_version": skill_version}
             self.assertEqual(payload_is_supported(data), expected, triple)
+
+
+class V34PayloadTests(unittest.TestCase):
+    """Valheim 1.0.20 appends two int32 -> int32 dictionaries after the build-UI blob."""
+
+    def test_v34_payload_round_trips_with_its_rng_state(self):
+        from tests.fixture_saves import realistic_v34_player_data, realistic_v34_player_hex
+
+        packed = realistic_v34_player_hex()
+        decoded = unpack_player_data_hex(packed)
+        self.assertEqual(pack_player_data_hex(decoded), packed)
+        fixture = realistic_v34_player_data()
+        self.assertEqual(decoded["pseudo_counter"], fixture["pseudo_counter"])
+        self.assertEqual(decoded["item_upgrade_seeds"], fixture["item_upgrade_seeds"])
+
+    def test_the_rng_state_is_read_only_from_34(self):
+        from tests.fixture_saves import realistic_v33_player_data, realistic_v33_player_hex
+
+        self.assertNotIn("pseudo_counter", unpack_player_data_hex(realistic_v33_player_hex()))
+        carrying = realistic_v33_player_data()
+        carrying["pseudo_counter"] = [[1, 2]]
+        carrying["item_upgrade_seeds"] = [[3, 4]]
+        self.assertEqual(pack_player_data_hex(carrying), realistic_v33_player_hex())
+
+    def test_a_truncated_v34_tail_is_refused(self):
+        from tests.fixture_saves import realistic_v34_player_hex
+
+        with self.assertRaises(SaveFormatError):
+            unpack_player_data_hex(realistic_v34_player_hex()[:-8])
 
 
 if __name__ == "__main__":

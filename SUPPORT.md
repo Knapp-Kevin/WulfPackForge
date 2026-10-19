@@ -34,6 +34,8 @@ Wulfpack Forge does not read remote Steam Cloud storage directly.
 
 If a character is visible on another machine but not this one, allow Steam to synchronize it locally. Launch Valheim to confirm the character appears, exit the game, then refresh Wulfpack Forge.
 
+A character saved by Wulfpack Forge is in the format Valheim 1.0.20 writes (save version 47), whatever version it was opened from. Every computer that plays a synchronized character should therefore run Valheim 1.0.20 or later.
+
 Do not provide your Steam password or authentication tokens to Wulfpack Forge or to anyone claiming they are required for support.
 
 ## Log file
@@ -42,7 +44,7 @@ Wulfpack Forge writes a rotating log (1 MB, three backups) to `%LOCALAPPDATA%\Wu
 
 ## Character states
 
-The character list shows one row per character. **States…** lists every copy Wulfpack Forge can see: the active save, Valheim's `.fch.old` and backup files, and the workspace snapshots and backups. **Open state** inspects a copy; **Restore as active** loads it as a pending edit and nothing changes on disk until you click **Save Changes**, which still verifies, backs up the current active file, and replaces it atomically.
+The character list shows one row per character. **States…** lists every copy Wulfpack Forge can see: the active save, Valheim's `.fch.old` and backup files, and the workspace snapshots and backups. **Open state** inspects a copy; **Restore as active** loads it as a pending edit and nothing changes on disk until you click **Save Changes**, which still verifies, backs up the current active file, and replaces it atomically; restoring a state saved by an older Valheim writes its save upgrade.
 
 ## Wulfpack Forge workspace
 

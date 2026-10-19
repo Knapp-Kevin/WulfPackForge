@@ -17,7 +17,7 @@ from subscripts.statRecords import read_stat_records, write_stat_records
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["BinaryReader", "BinaryWriter", "STRING_ERRORS", "MIN_CHARACTER_SAVE_VERSION", "MAX_CHARACTER_SAVE_VERSION", "CURRENT_CHARACTER_SAVE_VERSION",
+__all__ = ["BinaryReader", "BinaryWriter", "STRING_ERRORS", "MIN_CHARACTER_SAVE_VERSION", "MAX_CHARACTER_SAVE_VERSION", "CURRENT_CHARACTER_SAVE_VERSION", "CURRENT_FORMAT_GAME_VERSION",
            "READABLE_CHARACTER_SAVE_VERSIONS", "V46_STAT_RECORDS",
            "parse_save", "serialize_save", "decompile_fch", "compile_fch", "write_fch_bytes"]
 USAGE = (
@@ -31,10 +31,13 @@ USAGE = (
 # Older layouts differ in fields this module does not gate on, so they are refused.
 # 44 and 45 are refused too: the game gates its moved stat block on version >= 46 or
 # version == 44, so 45 has no defined layout and 44 cannot be verified without a sample.
+# 47 (Valheim 1.0.20) keeps the 46 layout; the game uses the number only to back up a
+# file it migrates.
 MIN_CHARACTER_SAVE_VERSION = 40
-MAX_CHARACTER_SAVE_VERSION = 46
-CURRENT_CHARACTER_SAVE_VERSION = 46
-READABLE_CHARACTER_SAVE_VERSIONS = frozenset({40, 41, 42, 43, 46})
+MAX_CHARACTER_SAVE_VERSION = 47
+CURRENT_CHARACTER_SAVE_VERSION = 47
+CURRENT_FORMAT_GAME_VERSION = "1.0.20"
+READABLE_CHARACTER_SAVE_VERSIONS = frozenset({40, 41, 42, 43, 46, 47})
 V46_STAT_RECORDS = 10
 
 
@@ -56,6 +59,11 @@ def _read_world(pkg: BinaryReader, version: int) -> dict:
 
 def _require_readable_version(version: int) -> None:
     """Refuse a container version by name rather than by a downstream short read."""
+    if version > MAX_CHARACTER_SAVE_VERSION:
+        raise SaveFormatError(
+            f"Character save version {version} is from a newer Valheim than this build reads "
+            f"(newest readable: {MAX_CHARACTER_SAVE_VERSION})."
+        )
     if version not in READABLE_CHARACTER_SAVE_VERSIONS:
         supported = ", ".join(str(known) for known in sorted(READABLE_CHARACTER_SAVE_VERSIONS))
         raise SaveFormatError(
@@ -73,7 +81,7 @@ def _read_stat_block(pkg: BinaryReader, save_data: dict) -> None:
     count = pkg.read_int32()
     if count != V46_STAT_RECORDS:
         raise SaveFormatError(
-            f"Character save declares {count} statistics records; version 46 always writes "
+            f"Character save declares {count} statistics records; version 46 and later always write "
             f"{V46_STAT_RECORDS}."
         )
     save_data["stat_records"] = read_stat_records(pkg, count, save_data["stat_length"])

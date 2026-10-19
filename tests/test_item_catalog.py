@@ -10,12 +10,20 @@ from data.items import (
 
 
 class ItemCatalogTests(unittest.TestCase):
-    def test_catalog_is_pinned_to_valheim_1_0_12(self):
+    def test_catalog_is_pinned_to_valheim_1_0_20(self):
         from data.catalogDocument import catalog_document
-        self.assertEqual(CATALOG_GAME_VERSION, "1.0.12")
-        self.assertEqual(catalog_document()["build_id"], 25253764)
+        self.assertEqual(CATALOG_GAME_VERSION, "1.0.20")
+        self.assertEqual(catalog_document()["build_id"], 25909357)
         self.assertGreaterEqual(CATALOG_ITEM_COUNT, 1500)
         self.assertGreaterEqual(CATALOG_SELECTABLE_ITEM_COUNT, 900)
+
+    def test_the_1_0_20_refresh_changes_shield_roots_record_but_no_write_constraint(self):
+        # Valheim 1.0.20 removed one ShieldRoots style. Only curated constraints bound what the editor
+        # writes (GOVERNANCE, item catalog governance), and ShieldRoots is not curated.
+        from data.catalogDocument import catalog_document
+        record = next(r for r in catalog_document()["items"] if r["prefab"] == "ShieldRoots")
+        self.assertEqual(record["limits"]["variants"], 3)
+        self.assertIsNone(resolve_item("ShieldRoots").variants)
 
     def test_every_curated_limit_equals_the_games_limit(self):
         from data.catalogDocument import record

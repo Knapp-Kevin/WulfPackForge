@@ -43,6 +43,8 @@ class StateCacheTests(unittest.TestCase):
     def test_build_key_names_both_supported_sets(self):
         self.assertIn("46", CACHE_BUILD_KEY)
         self.assertIn("33.109.2", CACHE_BUILD_KEY)
+        self.assertIn("47", CACHE_BUILD_KEY)
+        self.assertIn("34.110.2", CACHE_BUILD_KEY)
         self.assertNotIn("33.109.2", StateCache(None, build_key="other").build_key)
 
 

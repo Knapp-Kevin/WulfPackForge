@@ -18,7 +18,7 @@ def _verify_catalog_bundle() -> bool:
     from data.items import CATALOG_GAME_VERSION, CATALOG_SELECTABLE_ITEM_COUNT
 
     # The curated fallback is about 70 items, so any bundled catalog clears this floor and a missing
-    # one fails it. The Valheim 1.0.12 catalog has 941 selectable items; review at each refresh.
+    # one fails it. The Valheim 1.0.20 catalog has 941 selectable items; review at each refresh.
     return bool(CATALOG_GAME_VERSION) and CATALOG_SELECTABLE_ITEM_COUNT >= 800
 
 
